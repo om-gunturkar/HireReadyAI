@@ -1,17 +1,43 @@
+
 import { Link, useNavigate } from "react-router-dom";
 import { FiMail, FiLock } from "react-icons/fi";
 import { useState } from "react";
+import api from '../api/axiosInstance'; 
 
 const Login = () => {
   const navigate = useNavigate();
   
-  // Optional inputs stored (if later you add authentication)
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleLogin = () => {
-    // Later you will add validation or API call
-    navigate("/dashboard");
+  const handleLogin = async (e) => {
+    // Prevent page reload if this is called via form submit
+    if (e) e.preventDefault(); 
+
+    if (!email || !password) {
+        alert("Please enter email and password");
+        return;
+    }
+
+    try {
+      // 1. Call Backend
+      const response = await api.post('/auth/login', { email, password });
+      
+      // 2. Get Token from response
+      const { token } = response.data;
+
+      // 3. Save Token to Local Storage
+      localStorage.setItem('token', token);
+
+      // 4. Success Feedback & Redirect
+      console.log("Login Success:", response.data);
+      alert("Login Successful!");
+      navigate("/dashboard");
+
+    } catch (error) {
+      console.error("Login Error:", error.response?.data);
+      alert(error.response?.data?.message || "Invalid Email or Password");
+    }
   };
 
   return (
@@ -26,7 +52,8 @@ const Login = () => {
           Please login to continue
         </p>
 
-        <div className="space-y-4">
+        {/* Added form tag to handle 'Enter' key submission naturally */}
+        <form className="space-y-4" onSubmit={handleLogin}>
 
           {/* Email */}
           <div className="flex items-center gap-2 bg-gray-100 px-4 py-3 rounded-full">
@@ -58,12 +85,12 @@ const Login = () => {
 
           {/* Login Button */}
           <button
-            onClick={handleLogin}
+            type="submit" // changed to submit so Enter key works
             className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-full shadow-lg transition"
           >
             Login
           </button>
-        </div>
+        </form>
 
         <p className="text-center text-xs text-gray-500 mt-4">
           Don’t have an account?{" "}
