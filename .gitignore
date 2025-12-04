@@ -1,6 +1,6 @@
 # --- ALL Dependencies (Backend & Frontend) ---
 node_modules/
-*/node_modules/
+**/node_modules/
 
 # --- Security (CRITICAL - Keeps passwords safe) ---
 .env
@@ -8,10 +8,12 @@ node_modules/
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Backend-specific environment files
 Backend/.env
 frontend/.env
 
-# --- Build Outputs (Frontend) ---
+# --- Build Outputs ---
 dist/
 dist-ssr/
 build/
@@ -35,4 +37,3 @@ lerna-debug.log*
 *.njsproj
 *.sln
 *.sw?
-*.local
