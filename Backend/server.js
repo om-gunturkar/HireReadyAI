@@ -1,25 +1,21 @@
-const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const connectDB = require('./src/config/db');
-const authRoutes = require('./src/routes/authRoutes');
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const connectDB = require("./src/config/db");
 
-// Config
-dotenv.config();
 const app = express();
-const PORT = process.env.PORT || 5000;
-
-// Middleware
-app.use(express.json()); // Allows us to parse JSON bodies
-app.use(cors()); // Allows frontend (port 5173) to talk to backend (port 5000)
-
-// Connect to Database
 connectDB();
 
-// Routes
-app.use('/api/auth', authRoutes);
+app.use(cors());
+app.use(express.json());
 
-// Start Server
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+app.get("/test", (req, res) => {
+  res.send("Server is working");
+});
+
+app.use("/api/auth", require("./src/routes/authRoutes"));
+
+
+app.listen(5000, () => {
+  console.log("Server running on port 5000");
 });

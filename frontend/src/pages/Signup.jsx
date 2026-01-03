@@ -1,6 +1,41 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function Signup() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const navigate = useNavigate();
+
+  const handleSignup = async (e) => {
+    e.preventDefault();
+
+    try {
+      const res = await fetch("http://localhost:5000/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name, email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.message);
+        return;
+      }
+
+      alert("Signup successful! Please login.");
+
+      // ✅ Redirect to login page
+      navigate("/login");
+
+    } catch (error) {
+      alert("Something went wrong");
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center
     bg-gradient-to-br from-purple-50 via-purple-100 to-white">
@@ -16,29 +51,38 @@ export default function Signup() {
           Get started for free
         </p>
 
-        <form className="space-y-4">
+        <form className="space-y-4" onSubmit={handleSignup}>
           <input
             type="text"
             placeholder="Full Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             className="w-full px-4 py-3 rounded-lg
             border border-gray-300
             outline-none focus:ring-2 focus:ring-purple-500"
+            required
           />
 
           <input
             type="email"
             placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             className="w-full px-4 py-3 rounded-lg
             border border-gray-300
             outline-none focus:ring-2 focus:ring-purple-500"
+            required
           />
 
           <input
             type="password"
             placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             className="w-full px-4 py-3 rounded-lg
             border border-gray-300
             outline-none focus:ring-2 focus:ring-purple-500"
+            required
           />
 
           <button
