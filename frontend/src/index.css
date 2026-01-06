@@ -1,0 +1,27 @@
+@import "tailwindcss";
+.input {
+  width: 100%;
+  border: 1.5px solid #d1d5db; /* gray-300 */
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #9333ea; /* purple-600 */
+  box-shadow: 0 0 0 1px rgba(147, 51, 234, 0.3);
+}
+
+.section-box {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.add-btn {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #7c3aed;
+  cursor: pointer;
+}
