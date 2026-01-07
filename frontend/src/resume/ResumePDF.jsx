@@ -53,6 +53,10 @@ const styles = StyleSheet.create({
   skillItem: {
     width: "50%",
   },
+  italic: {
+  fontStyle: "italic",
+},
+
 });
 
 export default function ResumePDF({ data }) {
@@ -100,17 +104,30 @@ export default function ResumePDF({ data }) {
         ))}
 
         <Text style={styles.sectionTitle}>Projects</Text>
-        {data.projects.map((p, i) => (
-          <View key={i}>
-            <Text style={styles.bold}>{p.title} | {p.tech}</Text>
-            {p.points.split("\n").filter(Boolean).map((pt, idx) => (
-              <View key={idx} style={styles.bulletRow}>
-                <Text style={styles.bullet}>•</Text>
-                <Text style={styles.bulletText}>{pt}</Text>
-              </View>
-            ))}
-          </View>
-        ))}
+
+{data.projects.map((p, i) => (
+  <View key={i} style={{ marginBottom: 5 }}>
+
+    <Text>
+      <Text style={styles.bold}>{p.title}</Text>
+      {" | "}
+      <Text style={[styles.muted, styles.italic]}>
+        {p.tech}
+      </Text>
+    </Text>
+
+    {p.points
+      .split("\n")
+      .filter(Boolean)
+      .map((pt, idx) => (
+        <View key={idx} style={styles.bulletRow}>
+          <Text style={styles.bullet}>•</Text>
+          <Text style={styles.bulletText}>{pt}</Text>
+        </View>
+      ))}
+  </View>
+))}
+
 
       </Page>
     </Document>
