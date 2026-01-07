@@ -1,11 +1,9 @@
 import { useState, useEffect } from "react";
 import { pdf, PDFViewer } from "@react-pdf/renderer";
 import ResumePDF from "../resume/ResumePDF";
-import axios from "axios";
 import { saveResume } from "../api/resume";
 
 export default function Resume() {
-  // ===== BASIC DETAILS =====
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -14,7 +12,6 @@ export default function Resume() {
   const [portfolio, setPortfolio] = useState("");
   const [summary, setSummary] = useState("");
 
-  // ===== MULTI FIELDS =====
   const [education, setEducation] = useState([
     { degree: "", institute: "", score: "", year: "" }
   ]);
@@ -27,28 +24,15 @@ export default function Resume() {
   const [projects, setProjects] = useState([
     { title: "", tech: "", points: "" }
   ]);
+
   const handleSaveToDB = async () => {
-    try {
-      await saveResume({
-        name,
-        email,
-        phone,
-        linkedin,
-        github,
-        portfolio,
-        summary,
-        education,
-        skills,
-        experience,
-        projects
-      });
-      alert("Resume saved to database");
-    } catch (err) {
-      alert("Failed to save resume");
-    }
+    await saveResume({
+      name, email, phone, linkedin, github, portfolio,
+      summary, education, skills, experience, projects
+    });
+    alert("Resume saved");
   };
 
-  // ===== ADD FUNCTIONS =====
   const addEducation = () =>
     setEducation([...education, { degree: "", institute: "", score: "", year: "" }]);
 
@@ -58,77 +42,12 @@ export default function Resume() {
 
   const addProject = () =>
     setProjects([...projects, { title: "", tech: "", points: "" }]);
-  const [previewData, setPreviewData] = useState(null);
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      setPreviewData({
-        name,
-        email,
-        phone,
-        linkedin,
-        github,
-        portfolio,
-        summary,
-        education,
-        skills,
-        experience,
-        projects
-      });
-    }, 500); // updates after 500ms idle
-
-    return () => clearTimeout(timeout);
-  }, [
-    name,
-    email,
-    phone,
-    linkedin,
-    github,
-    portfolio,
-    summary,
-    education,
-    skills,
-    experience,
-    projects
-  ]);
-
-
-  // ===== PDF GENERATION =====
-  const handleGeneratePDF = async () => {
-    try {
-      const blob = await pdf(
-        <ResumePDF data={previewData || {
-          name,
-          email,
-          phone,
-          linkedin,
-          github,
-          portfolio,
-          summary,
-          education,
-          skills,
-          experience,
-          projects
-        }} />
-
-      ).toBlob();
-
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${name || "Resume"}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error(err);
-      alert("PDF generation failed. Check console.");
-    }
-  };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex h-screen overflow-hidden bg-gray-50">
 
-      {/* ================= LEFT SIDE — FORM (UNCHANGED) ================= */}
-      <div className="w-1/2 px-10 py-10 overflow-y-auto">
+      {/* LEFT FORM — SCROLLS */}
+      <div className="w-1/2 h-full overflow-y-auto px-10 py-10">
         <h1 className="text-3xl font-bold text-purple-700 mb-8">
           Create Resume
         </h1>
@@ -154,7 +73,7 @@ export default function Resume() {
             <textarea
               rows="4"
               className="input"
-              placeholder="Professional summary"
+              placeholder="Brief professional summary"
               value={summary}
               onChange={e => setSummary(e.target.value)}
             />
@@ -163,7 +82,6 @@ export default function Resume() {
           {/* EDUCATION */}
           <div className="section-box bg-white">
             <h2 className="font-semibold mb-4">Education</h2>
-
             {education.map((edu, i) => (
               <div key={i} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <input className="input" placeholder="Degree" value={edu.degree}
@@ -192,7 +110,6 @@ export default function Resume() {
                   }} />
               </div>
             ))}
-
             <span className="add-btn" onClick={addEducation}>
               + Add another education
             </span>
@@ -206,7 +123,7 @@ export default function Resume() {
               <input
                 key={i}
                 className="input mb-3"
-                placeholder={`Skill ${i + 1}`}
+                placeholder="Eg: Languages: Core Java, Advanced Java, Python, JavaScript"
                 value={skill}
                 onChange={e => {
                   const copy = [...skills];
@@ -224,7 +141,6 @@ export default function Resume() {
           {/* EXPERIENCE */}
           <div className="section-box bg-white">
             <h2 className="font-semibold mb-4">Experience</h2>
-
             {experience.map((exp, i) => (
               <div key={i} className="mb-4 space-y-3">
                 <input className="input" placeholder="Role" value={exp.role}
@@ -233,21 +149,18 @@ export default function Resume() {
                     copy[i].role = e.target.value;
                     setExperience(copy);
                   }} />
-
                 <input className="input" placeholder="Company" value={exp.company}
                   onChange={e => {
                     const copy = [...experience];
                     copy[i].company = e.target.value;
                     setExperience(copy);
                   }} />
-
                 <input className="input" placeholder="Duration" value={exp.duration}
                   onChange={e => {
                     const copy = [...experience];
                     copy[i].duration = e.target.value;
                     setExperience(copy);
                   }} />
-
                 <textarea
                   rows="3"
                   className="input"
@@ -261,7 +174,6 @@ export default function Resume() {
                 />
               </div>
             ))}
-
             <span className="add-btn" onClick={addExperience}>
               + Add another experience
             </span>
@@ -270,7 +182,6 @@ export default function Resume() {
           {/* PROJECTS */}
           <div className="section-box bg-white">
             <h2 className="font-semibold mb-4">Projects</h2>
-
             {projects.map((proj, i) => (
               <div key={i} className="mb-4 space-y-3">
                 <input className="input" placeholder="Project Title" value={proj.title}
@@ -298,67 +209,24 @@ export default function Resume() {
                 />
               </div>
             ))}
-
             <span className="add-btn" onClick={addProject}>
               + Add another project
             </span>
           </div>
-
-          <div className="flex gap-4">
-            <button
-              onClick={handleSaveToDB}
-              className="w-1/2 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700"
-            >
-              Save
-            </button>
-
-            <button
-              onClick={handleGeneratePDF}
-              className="w-1/2 bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700"
-            >
-              Generate Resume PDF
-            </button>
-          </div>
-
         </div>
       </div>
 
-      {/* ================= RIGHT SIDE — EMBEDDED PREVIEW ================= */}
-      <div className="w-1/2 bg-gray-200 flex justify-center items-start p-8 overflow-y-auto">
-
-        {/* Resume card */}
-        <div
-          className="bg-white"
-          style={{
-            width: "794px",
-            height: "1123px",
-            border: "1px solid #e5e7eb",
-            overflow: "hidden",
-          }}
-        >
-
-
-          <PDFViewer width="100%" height="1123px" showToolbar={false} style={{ backgroundColor: "#ffffff" }}>
-            <ResumePDF
-              data={{
-                name,
-                email,
-                phone,
-                linkedin,
-                github,
-                portfolio,
-                summary,
-                education,
-                skills,
-                experience,
-                projects
-              }}
-            />
+      {/* RIGHT PREVIEW — FIXED */}
+      <div className="w-1/2 h-full bg-gray-200 flex justify-center items-start p-8 overflow-hidden">
+        <div className="bg-white" style={{ width: "794px", height: "1123px" }}>
+          <PDFViewer width="100%" height="1123px" showToolbar={false}>
+            <ResumePDF data={{
+              name, email, phone, linkedin, github, portfolio,
+              summary, education, skills, experience, projects
+            }} />
           </PDFViewer>
-
         </div>
       </div>
-
 
     </div>
   );
