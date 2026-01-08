@@ -6,8 +6,8 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     paddingHorizontal: 30,
     fontFamily: "Times-Roman",
-    fontSize: 11,
-    lineHeight: 1.4,
+    fontSize: 10,
+    lineHeight: 1.35,
   },
 
   name: {
@@ -18,7 +18,7 @@ const styles = StyleSheet.create({
 
   contact: {
     marginTop: 4,
-    fontSize: 10,
+    fontSize: 9,
     textAlign: "center",
     color: "#333",
   },
@@ -26,24 +26,25 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: "#000",
-    marginVertical: 6,
+    marginVertical: 5,
   },
 
   sectionTitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "bold",
     marginBottom: 4,
     textTransform: "uppercase",
   },
 
   bold: { fontWeight: "bold" },
-  muted: { color: "#444" },
+  muted: { color: "#444", fontSize: 9 },
+  italic: { fontStyle: "italic" },
 
   bulletRow: {
     flexDirection: "row",
     marginLeft: 10,
   },
-  bullet: { width: 10 },
+  bullet: { width: 8 },
   bulletText: { flex: 1 },
 
   skillsWrap: {
@@ -52,11 +53,8 @@ const styles = StyleSheet.create({
   },
   skillItem: {
     width: "50%",
+    fontSize: 9,
   },
-  italic: {
-  fontStyle: "italic",
-},
-
 });
 
 export default function ResumePDF({ data }) {
@@ -104,30 +102,21 @@ export default function ResumePDF({ data }) {
         ))}
 
         <Text style={styles.sectionTitle}>Projects</Text>
-
-{data.projects.map((p, i) => (
-  <View key={i} style={{ marginBottom: 5 }}>
-
-    <Text>
-      <Text style={styles.bold}>{p.title}</Text>
-      {" | "}
-      <Text style={[styles.muted, styles.italic]}>
-        {p.tech}
-      </Text>
-    </Text>
-
-    {p.points
-      .split("\n")
-      .filter(Boolean)
-      .map((pt, idx) => (
-        <View key={idx} style={styles.bulletRow}>
-          <Text style={styles.bullet}>•</Text>
-          <Text style={styles.bulletText}>{pt}</Text>
-        </View>
-      ))}
-  </View>
-))}
-
+        {data.projects.map((p, i) => (
+          <View key={i}>
+            <Text>
+              <Text style={styles.bold}>{p.title}</Text>
+              {" | "}
+              <Text style={[styles.muted, styles.italic]}>{p.tech}</Text>
+            </Text>
+            {p.points.split("\n").filter(Boolean).map((pt, idx) => (
+              <View key={idx} style={styles.bulletRow}>
+                <Text style={styles.bullet}>•</Text>
+                <Text style={styles.bulletText}>{pt}</Text>
+              </View>
+            ))}
+          </View>
+        ))}
 
       </Page>
     </Document>
