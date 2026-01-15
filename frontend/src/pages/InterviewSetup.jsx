@@ -134,7 +134,7 @@ export default function InterviewSetup() {
         {/* Start Button */}
         <button
           onClick={() =>
-            navigate("/session", {
+            navigate("/mock-interview/session", {
               state: {
                 mode,
                 value:

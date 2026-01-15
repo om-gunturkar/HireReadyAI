@@ -1,1 +1,15 @@
 @import "tailwindcss";
+
+/* Hire Ready AI – light purple patterned background (resume + mic) */
+.hra-auth-bg {
+  min-height: 100vh;
+  background-color: #f3efff;
+  background-image:
+    radial-gradient(circle at top, #faf8ff 0%, #ede9ff 55%, #e4ddff 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Crect x='18' y='18' width='28' height='36' rx='4' ry='4' fill='none' stroke='rgba(124,58,237,0.25)' stroke-width='2'/%3E%3Cline x1='24' y1='28' x2='40' y2='28' stroke='rgba(124,58,237,0.25)' stroke-width='2'/%3E%3Cline x1='24' y1='36' x2='40' y2='36' stroke='rgba(124,58,237,0.25)' stroke-width='2'/%3E%3Cline x1='24' y1='44' x2='36' y2='44' stroke='rgba(124,58,237,0.25)' stroke-width='2'/%3E%3Crect x='92' y='68' width='14' height='26' rx='7' fill='none' stroke='rgba(124,58,237,0.25)' stroke-width='2'/%3E%3Cline x1='99' y1='94' x2='99' y2='108' stroke='rgba(124,58,237,0.25)' stroke-width='2'/%3E%3Cpath d='M88 80 Q99 92 110 80' fill='none' stroke='rgba(124,58,237,0.25)' stroke-width='2'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: auto, 140px 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

@@ -13,9 +13,7 @@ export default function Signup() {
     try {
       const res = await fetch("http://localhost:5000/api/auth/signup", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password }),
       });
 
@@ -27,21 +25,17 @@ export default function Signup() {
       }
 
       alert("Signup successful! Please login.");
-
-      // ✅ Redirect to login page
       navigate("/login");
 
-    } catch (error) {
+    } catch {
       alert("Something went wrong");
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center
-    bg-gradient-to-br from-purple-50 via-purple-100 to-white">
+    <div className="min-h-screen hra-auth-bg">
 
-      <div className="w-full max-w-md bg-white rounded-2xl
-      shadow-xl p-8 animate-fadeIn">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
 
         <h2 className="text-3xl font-bold text-center mb-2 text-purple-700">
           Create Account
@@ -57,9 +51,7 @@ export default function Signup() {
             placeholder="Full Name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg
-            border border-gray-300
-            outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-full px-4 py-3 rounded-lg border border-gray-300 outline-none focus:ring-2 focus:ring-purple-500"
             required
           />
 
@@ -68,9 +60,7 @@ export default function Signup() {
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg
-            border border-gray-300
-            outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-full px-4 py-3 rounded-lg border border-gray-300 outline-none focus:ring-2 focus:ring-purple-500"
             required
           />
 
@@ -79,17 +69,13 @@ export default function Signup() {
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg
-            border border-gray-300
-            outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-full px-4 py-3 rounded-lg border border-gray-300 outline-none focus:ring-2 focus:ring-purple-500"
             required
           />
 
           <button
             type="submit"
-            className="w-full py-3 rounded-lg
-            bg-purple-600 text-white font-semibold
-            hover:bg-purple-700 transition"
+            className="w-full py-3 rounded-lg bg-purple-600 text-white font-semibold hover:bg-purple-700 transition"
           >
             Sign Up
           </button>
