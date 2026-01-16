@@ -203,7 +203,7 @@ speak(spokenQuestion, () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white flex items-center justify-center p-6">
-      <div className="w-full max-w-5xl bg-white rounded-2xl p-6 shadow-lg border border-purple-100">
+      <div className="w-[92vw] max-w-[1400px] min-h-[85vh] bg-white rounded-2xl p-8 shadow-lg border border-purple-100 flex flex-col">
 
         <h2 className="text-2xl font-semibold text-purple-700 mb-1 flex items-center gap-2">
           🎯 Mock Interview
