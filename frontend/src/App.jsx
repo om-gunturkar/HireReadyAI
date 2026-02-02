@@ -6,6 +6,9 @@ import Signup from "./pages/Signup";
 import Home from "./pages/Home";
 import InterviewSetup from "./pages/InterviewSetup";
 import InterviewSession from "./pages/InterviewSession";
+import InterviewFeedback from "./pages/InterviewFeedback"
+import Resume from "./pages/Resume";
+
 
 function App() {
   return (
@@ -27,6 +30,8 @@ function App() {
           path="/mock-interview/session"
           element={<InterviewSession />}
         />
+         <Route path="/mock-interview/feedback" element={<InterviewFeedback />} />
+        <Route path="/resume" element={<Resume />} />
       </Routes>
     </BrowserRouter>
   );

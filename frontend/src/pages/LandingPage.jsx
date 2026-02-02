@@ -6,15 +6,15 @@ export default function App() {
       {/* NAVBAR */}
       <nav className="flex justify-between items-center px-8 py-5 bg-white shadow-lg sticky top-0 z-50">
         <h1 className="text-5xl font-extrabold text-purple-600">Hire Ready AI</h1>
-       <button className="
+        <button className="
   bg-purple-600 text-white px-5 py-2 rounded-lg
   hover:bg-purple-700 hover:scale-105
   transition-all duration-300 shadow
 ">
-  <Link to="/login">
-    Login / Sign Up
-  </Link>
-</button>
+          <Link to="/login">
+            Login / Sign Up
+          </Link>
+        </button>
 
       </nav>
 
@@ -42,14 +42,15 @@ export default function App() {
             </ul>
 
             <div className="flex gap-4">
-              <button className="
+              <Link to="/signup">
+                <button className="
                 bg-purple-600 text-white px-6 py-3 rounded-xl
                 hover:bg-purple-700 hover:scale-105
                 transition-all duration-300 shadow-lg
               ">
-                Get Started Free
-              </button>
-
+                  Get Started Free
+                </button>
+              </Link>
               <button className="
                 border px-6 py-3 rounded-xl
                 hover:bg-gray-100 hover:scale-105

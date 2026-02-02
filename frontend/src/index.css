@@ -1,5 +1,65 @@
 @import "tailwindcss";
 
+/* ---------------- INPUT FIELDS ---------------- */
+
+.input {
+  width: 100%;
+  border: 1.5px solid #d1d5db; /* gray-300 */
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 14px;
+  background-color: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.input::placeholder {
+  color: #9ca3af; /* gray-400 */
+}
+
+.input:focus {
+  outline: none;
+  border-color: #9333ea; /* purple-600 */
+  box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.15);
+  background-color: #fafafa;
+}
+
+
+/* ---------------- SECTION BOX ---------------- */
+
+.section-box {
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 22px;
+  background-color: #ffffff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.section-box:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
+}
+
+
+/* ---------------- ADD BUTTON ---------------- */
+
+.add-btn {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #7c3aed;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.add-btn:hover {
+  color: #5b21b6;
+  text-decoration: underline;
+}
+
+
+/* ---------------- AUTH BACKGROUND (UNCHANGED) ---------------- */
+
 /* Hire Ready AI – light purple patterned background (resume + mic) */
 .hra-auth-bg {
   min-height: 100vh;
