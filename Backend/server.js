@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const connectDB = require("./src/config/db");
 const resumeRoutes = require("./src/routes/resumeRoutes");
+const interviewRoutes = require("./src/routes/interviewRoutes");
 
 const app = express();
 connectDB();
@@ -16,6 +17,8 @@ app.get("/test", (req, res) => {
 
 app.use("/api/auth", require("./src/routes/authRoutes"));
 app.use("/api/resume", resumeRoutes);
+app.use("/api/interview", interviewRoutes);
+
 
 app.listen(5000, () => {
   console.log("Server running on port 5000");

@@ -5,25 +5,24 @@ export default function InterviewSession() {
   const { state } = useLocation();
   const { mode, value } = state || {};
 
+  /* ---------------- STATE ---------------- */
   const [phase, setPhase] = useState("greeting"); // greeting | level | interview
   const [level, setLevel] = useState("");
   const [question, setQuestion] = useState("");
   const [rawQuestion, setRawQuestion] = useState("");
   const [transcript, setTranscript] = useState("");
   const [count, setCount] = useState(1);
-  const [status, setStatus] = useState("🧑‍💼 Interviewer");
   const [timeLeft, setTimeLeft] = useState(60);
   const [askedQuestions, setAskedQuestions] = useState([]);
-  const [interviewHistory, setInterviewHistory] = useState([]);
 
   const recognitionRef = useRef(null);
   const timerRef = useRef(null);
   const speakingRef = useRef(false);
+  const greetedRef = useRef(false);
 
   const MAX_QUESTIONS = 10;
 
-  /* ---------------- HELPERS ---------------- */
-
+  /* ---------------- GREETING ---------------- */
   const getGreeting = () => {
     const h = new Date().getHours();
     if (h < 12) return "Good morning";
@@ -32,7 +31,6 @@ export default function InterviewSession() {
   };
 
   /* ---------------- SPEECH RECOGNITION ---------------- */
-
   useEffect(() => {
     if ("webkitSpeechRecognition" in window) {
       const recog = new window.webkitSpeechRecognition();
@@ -60,50 +58,47 @@ export default function InterviewSession() {
 
       recognitionRef.current = recog;
     }
-  }, [transcript, phase]);
+  }, [phase, transcript]);
 
   /* ---------------- TEXT TO SPEECH ---------------- */
-
   const speak = (text, onEnd) => {
     speakingRef.current = true;
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "en-US";
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "en-US";
 
-    utterance.onend = () => {
+    u.onend = () => {
       speakingRef.current = false;
-      if (onEnd) onEnd();
+      onEnd && onEnd();
     };
 
     window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
+    window.speechSynthesis.speak(u);
   };
 
+  /* ---------------- INITIAL GREETING ---------------- */
+  useEffect(() => {
+    if (phase === "greeting" && !greetedRef.current) {
+      greetedRef.current = true;
 
-  /* ---------------- GREETING (100% RELIABLE) ---------------- */
-useEffect(() => {
-  if (phase === "greeting") {
-    const greetingOnly = getGreeting();
-    const welcomeText =
-      "Welcome to Hire Ready AI, an AI powered resume builder and mock interview platform. " +
-      "To continue with the interview, please select the level of interview.";
+      const greeting = getGreeting();
+      const welcome =
+        "Welcome to Hire Ready AI, an AI powered resume builder and mock interview platform. " +
+        "To continue with the interview, please select the level of interview.";
 
-    // Step 1: Speak greeting
-    speak(greetingOnly, () => {
-      // Step 2: Speak welcome + instruction
-      setQuestion(`${greetingOnly}. ${welcomeText}`);
-      speak(welcomeText, () => {
-        setPhase("level"); // buttons appear only AFTER speech
+      const fullText = `${greeting}. ${welcome}`;
+      setQuestion(fullText);
+
+      speak(greeting, () => {
+        speak(welcome, () => {
+          setPhase("level");
+        });
       });
-    });
-  }
-}, [phase]);
-
+    }
+  }, [phase]);
 
   /* ---------------- LEVEL SELECTION ---------------- */
-
   const chooseLevel = (lvl) => {
     setLevel(lvl);
-
     const msg = `You have selected the ${lvl} level. Let's start the interview.`;
     setQuestion(msg);
 
@@ -113,56 +108,50 @@ useEffect(() => {
     });
   };
 
-  /* ---------------- AI CALL ---------------- */
-
+  /* ---------------- FETCH QUESTION ---------------- */
   const getQuestion = async (answerText = "", qCount = count, lvl = level) => {
     setTranscript("");
-    setStatus("🤖 Interviewer is thinking...");
-
-    const res = await fetch("http://localhost:5000/api/ai/interview", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        mode,
-        value,
-        level: lvl,
-        answer: answerText,
-        count: qCount,
-        askedQuestions
-      })
-    });
-
-    const data = await res.json();
-    const cleanQ = data.question;
-
-    setRawQuestion(cleanQ);
-    setAskedQuestions((prev) => [...prev, cleanQ]);
-    setQuestion(cleanQ);
-
-  setStatus("🧑‍💼 Interviewer speaking...");
-
-const spokenQuestion = `Here is question number ${qCount}. ${cleanQ}`;
-setQuestion(spokenQuestion);
-
-speak(spokenQuestion, () => {
-  setStatus("🎙 Listening...");
-  startAnswerPhase();
-});
-
-  };
-
-  /* ---------------- ANSWER PHASE ---------------- */
-
-  const startAnswerPhase = () => {
-    recognitionRef.current?.start();
-    startTimer();
-  };
-
-  const stopAnswerPhase = () => {
-    recognitionRef.current?.stop();
     clearInterval(timerRef.current);
+
+    try {
+      const res = await fetch("http://localhost:5000/api/interview/next", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode,
+          value,
+          level: lvl,
+          questionIndex: qCount - 1,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!data.question) {
+        setQuestion("No question received from server.");
+        return;
+      }
+
+      const cleanQ = data.question;
+      const displayQ = `Here is question number ${qCount}. ${cleanQ}`;
+
+      // UI FIRST
+      setRawQuestion(cleanQ);
+      setQuestion(displayQ);
+      setAskedQuestions((prev) => [...prev, cleanQ]);
+
+      // Voice + mic + timer
+      speak(displayQ, () => {
+        recognitionRef.current?.start();
+        startTimer();
+      });
+    } catch (err) {
+      console.error(err);
+      setQuestion("Failed to load question.");
+    }
   };
 
+  /* ---------------- TIMER ---------------- */
   const startTimer = () => {
     setTimeLeft(60);
     timerRef.current = setInterval(() => {
@@ -177,20 +166,17 @@ speak(spokenQuestion, () => {
     }, 1000);
   };
 
+  const stopAll = () => {
+    clearInterval(timerRef.current);
+    recognitionRef.current?.stop();
+  };
+
   /* ---------------- NEXT QUESTION ---------------- */
-
   const nextQuestion = async () => {
-    stopAnswerPhase();
-
-    setInterviewHistory((prev) => [
-      ...prev,
-      { question: rawQuestion, answer: transcript }
-    ]);
+    stopAll();
 
     if (count >= MAX_QUESTIONS) {
       speak("Your interview is completed. Thank you for your time.");
-      setStatus("✅ Interview completed");
-      console.log("FINAL INTERVIEW DATA:", interviewHistory);
       return;
     }
 
@@ -200,73 +186,102 @@ speak(spokenQuestion, () => {
   };
 
   /* ---------------- UI ---------------- */
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white flex items-center justify-center p-6">
-      <div className="w-[92vw] max-w-[1400px] min-h-[85vh] bg-white rounded-2xl p-8 shadow-lg border border-purple-100 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white flex justify-center items-center p-8">
+      <div className="w-full max-w-[90rem] min-h-[85vh] bg-white rounded-2xl shadow-lg border border-purple-100 p-10">
 
-        <h2 className="text-2xl font-semibold text-purple-700 mb-1 flex items-center gap-2">
+        {/* HEADER */}
+        <h2 className="text-2xl font-semibold text-purple-700 mb-1">
           🎯 Mock Interview
         </h2>
         <p className="text-sm text-gray-500 mb-6">
           Mode: {mode} | Topic: {value}
         </p>
 
-        {/* SYSTEM & USER */}
-        <div className="grid grid-cols-2 gap-6 mb-6">
-          <div className="rounded-2xl bg-purple-100 p-6 flex flex-col items-center justify-center h-52 border border-purple-200">
-            <div className="w-20 h-20 rounded-full bg-purple-600 flex items-center justify-center text-white text-xl mb-3">
-              🤖
+        {/* MAIN GRID */}
+        <div className="grid grid-cols-12 gap-8 h-full">
+
+          {/* LEFT */}
+          <div className="col-span-4 flex flex-col gap-6">
+            <div className="h-56 bg-purple-100 border border-purple-200 rounded-xl flex flex-col items-center justify-center">
+              <div className="w-16 h-16 rounded-full bg-purple-600 text-white flex items-center justify-center mb-2">
+                🤖
+              </div>
+              <p className="font-medium text-purple-700">System</p>
+              <p className="text-sm text-purple-500">AI Interviewer</p>
             </div>
-            <p className="text-purple-700 font-medium">System</p>
-            <p className="text-purple-500 text-sm">AI Interviewer</p>
+
+            <div className="h-56 bg-purple-100 border border-purple-200 rounded-xl flex flex-col items-center justify-center">
+              <div className="w-16 h-16 rounded-full bg-purple-400 text-white flex items-center justify-center mb-2">
+                👤
+              </div>
+              <p className="font-medium text-purple-700">User</p>
+              <p className="text-sm text-purple-500">Candidate</p>
+            </div>
           </div>
 
-          <div className="rounded-2xl bg-purple-50 p-6 flex flex-col items-center justify-center h-52 border border-purple-200">
-            <div className="w-20 h-20 rounded-full bg-purple-400 flex items-center justify-center text-white text-xl mb-3">
-              👤
+          {/* RIGHT */}
+          <div className="col-span-8 bg-purple-50 border border-purple-200 rounded-xl p-8 flex flex-col justify-between">
+
+            {/* QUESTION */}
+            <div>
+              <div className="flex justify-between mb-3">
+                <p className="text-xs uppercase tracking-wide text-purple-500">
+                  Question
+                </p>
+                {phase === "interview" && (
+                  <span className="text-sm text-purple-600">
+                    ⏱ 0:{timeLeft.toString().padStart(2, "0")}
+                  </span>
+                )}
+              </div>
+
+              <p className="text-lg font-medium text-purple-900 leading-relaxed">
+                {question}
+              </p>
             </div>
-            <p className="text-purple-700 font-medium">User</p>
-            <p className="text-purple-500 text-sm">Candidate</p>
+
+            {/* LEVEL BUTTONS */}
+            {phase === "level" && (
+              <div className="flex justify-center gap-6">
+                <button
+                  onClick={() => chooseLevel("easy")}
+                  className="px-6 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200"
+                >
+                  Easy
+                </button>
+                <button
+                  onClick={() => chooseLevel("medium")}
+                  className="px-6 py-2 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200"
+                >
+                  Medium
+                </button>
+                <button
+                  onClick={() => chooseLevel("hard")}
+                  className="px-6 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200"
+                >
+                  Hard
+                </button>
+              </div>
+            )}
+
+            {/* ANSWER */}
+            {phase === "interview" && (
+              <>
+                <textarea
+                  rows="7"
+                  className="w-full bg-white border border-purple-300 rounded-lg p-4 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  placeholder="User spoken answer will be converted to text here..."
+                  value={transcript}
+                  onChange={(e) => setTranscript(e.target.value)}
+                />
+                <div className="flex justify-end text-sm text-purple-600 mt-3">
+                  {count} / {MAX_QUESTIONS}
+                </div>
+              </>
+            )}
           </div>
         </div>
-
-        {/* LEVEL SELECTION */}
-        {phase === "level" && (
-          <div className="flex justify-center gap-6 mb-8">
-            <button onClick={() => chooseLevel("easy")} className="px-6 py-2 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-700 font-medium border border-purple-300">
-              Easy
-            </button>
-            <button onClick={() => chooseLevel("medium")} className="px-6 py-2 rounded-xl bg-purple-200 hover:bg-purple-300 text-purple-800 font-medium border border-purple-300">
-              Medium
-            </button>
-            <button onClick={() => chooseLevel("hard")} className="px-6 py-2 rounded-xl bg-purple-300 hover:bg-purple-400 text-purple-900 font-medium border border-purple-400">
-              Hard
-            </button>
-          </div>
-        )}
-
-        {/* INTERVIEW */}
-        {phase === "interview" && (
-          <div className="rounded-2xl bg-purple-50 p-6 border border-purple-200">
-            <p className="text-sm uppercase text-purple-500 mb-2">Question</p>
-            <p className="text-lg font-medium text-purple-900 mb-4">{question}</p>
-
-            <p className="text-sm uppercase text-purple-500 mb-2">Answer</p>
-            <textarea
-              rows="4"
-              className="w-full bg-white border border-purple-300 rounded-lg p-3 focus:ring-2 focus:ring-purple-400"
-              placeholder="Your spoken answer will appear here..."
-              value={transcript}
-              onChange={(e) => setTranscript(e.target.value)}
-            />
-
-            <div className="flex justify-between mt-4 text-sm text-purple-600">
-              <span>⏰ 0:{timeLeft.toString().padStart(2, "0")}</span>
-              <span>Question {count} / {MAX_QUESTIONS}</span>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
