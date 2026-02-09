@@ -91,7 +91,7 @@ export default function Home() {
 
           {/* Create Resume */}
           <div
-            onClick={() => navigate("/resume")}
+            onClick={() => navigate("/resume-templates")}
             className="
               cursor-pointer w-80 rounded-3xl p-10
               bg-gradient-to-br from-white/40 to-white/10

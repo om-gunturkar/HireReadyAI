@@ -6,9 +6,9 @@ import Signup from "./pages/Signup";
 import Home from "./pages/Home";
 import InterviewSetup from "./pages/InterviewSetup";
 import InterviewSession from "./pages/InterviewSession";
-import InterviewFeedback from "./pages/InterviewFeedback"
+import InterviewFeedback from "./pages/InterviewFeedback";
 import Resume from "./pages/Resume";
-
+import ResumeTemplates from "./pages/ResumeTemplates";
 
 function App() {
   return (
@@ -26,11 +26,11 @@ function App() {
 
         {/* Mock Interview */}
         <Route path="/mock-interview" element={<InterviewSetup />} />
-        <Route
-          path="/mock-interview/session"
-          element={<InterviewSession />}
-        />
-         <Route path="/mock-interview/feedback" element={<InterviewFeedback />} />
+        <Route path="/mock-interview/session" element={<InterviewSession />} />
+        <Route path="/mock-interview/feedback" element={<InterviewFeedback />} />
+
+        {/* Resume Flow */}
+        <Route path="/resume-templates" element={<ResumeTemplates />} />
         <Route path="/resume" element={<Resume />} />
       </Routes>
     </BrowserRouter>

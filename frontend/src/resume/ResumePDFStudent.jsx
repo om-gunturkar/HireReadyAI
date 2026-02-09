@@ -1,9 +1,26 @@
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 
 const styles = StyleSheet.create({
-  page: { padding: 30, fontSize: 10, fontFamily: "Helvetica" },
-  name: { fontSize: 18, fontWeight: "bold" },
-  title: { fontSize: 11, fontWeight: "bold", marginTop: 10 },
+  page: {
+    padding: 32,
+    fontSize: 10,
+    fontFamily: "Helvetica",
+    lineHeight: 1.5,
+  },
+  name: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  title: {
+    fontSize: 11,
+    fontWeight: "bold",
+    marginTop: 14,
+    marginBottom: 4,
+  },
+  block: {
+    marginBottom: 6,
+  },
 });
 
 export default function ResumePDFStudent({ data }) {
@@ -14,7 +31,7 @@ export default function ResumePDFStudent({ data }) {
 
         <Text style={styles.title}>PROJECTS</Text>
         {data.projects.map((p, i) => (
-          <View key={i}>
+          <View key={i} style={styles.block}>
             <Text>{p.title} ({p.tech})</Text>
             {p.points.split("\n").filter(Boolean).map((pt, idx) =>
               <Text key={idx}>• {pt}</Text>
