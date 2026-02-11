@@ -2,23 +2,23 @@ import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 20,
-    paddingBottom: 20,
-    paddingHorizontal: 30,
+    paddingTop: 25,
+    paddingBottom: 25,
+    paddingHorizontal: 35,
     fontFamily: "Times-Roman",
-    fontSize: 10,
-    lineHeight: 1.35,
+    fontSize: 12, // increased from 10 → 12
+    lineHeight: 1.5,
   },
 
   name: {
-    fontSize: 18,
+    fontSize: 20, // increased
     fontWeight: "bold",
     textAlign: "center",
   },
 
   contact: {
-    marginTop: 4,
-    fontSize: 9,
+    marginTop: 6,
+    fontSize: 11, // increased
     textAlign: "center",
     color: "#333",
   },
@@ -26,128 +26,175 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: "#000",
-    marginVertical: 5,
+    marginVertical: 8,
+  },
+
+  section: {
+    marginTop: 12,
   },
 
   sectionTitle: {
-    fontSize: 11,
+    fontSize: 13, // increased
     fontWeight: "bold",
-    marginBottom: 4,
+    marginBottom: 6,
     textTransform: "uppercase",
   },
 
   bold: { fontWeight: "bold" },
-  muted: { color: "#444", fontSize: 9 },
+
+  muted: {
+    color: "#444",
+    fontSize: 11, // increased
+  },
+
   italic: { fontStyle: "italic" },
 
   bulletRow: {
     flexDirection: "row",
-    marginLeft: 10,
+    marginLeft: 12,
+    marginBottom: 4,
   },
 
   bullet: {
-    width: 8,
+    width: 10,
   },
 
   bulletText: {
     flex: 1,
   },
-
-  skillsWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-  },
-
-  skillItem: {
-    width: "50%",
-    fontSize: 9,
-  },
 });
 
-export default function ResumePDFClassic({ data }) {
+export default function ResumePDFClassic({ data = {} }) {
+  const {
+    name = "",
+    email = "",
+    phone = "",
+    linkedin = "",
+    github = "",
+    portfolio = "",
+    summary = "",
+    education = [],
+    skills = [],
+    experience = [],
+    projects = [],
+  } = data;
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
 
         {/* HEADER */}
-        <Text style={styles.name}>{data.name}</Text>
+        <Text style={styles.name}>{name}</Text>
+
         <Text style={styles.contact}>
-          {data.email} | {data.phone} | {data.linkedin} | {data.github} | {data.portfolio}
+          {[email, phone, linkedin, github, portfolio]
+            .filter(Boolean)
+            .join(" | ")}
         </Text>
 
         <View style={styles.divider} />
 
         {/* SUMMARY */}
-        <Text style={styles.sectionTitle}>Summary</Text>
-        <Text>{data.summary}</Text>
+        {summary && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Summary</Text>
+            <Text>{summary}</Text>
+          </View>
+        )}
 
         {/* EDUCATION */}
-        <Text style={styles.sectionTitle}>Education</Text>
-        {data.education.map((e, i) => (
-          <View key={i}>
-            <Text style={styles.bold}>
-              {e.degree} – {e.institute}
-            </Text>
-            <Text style={styles.muted}>
-              {e.score} | {e.year}
-            </Text>
-          </View>
-        ))}
+        {education.filter(e => e.degree).length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Education</Text>
 
-        {/* SKILLS */}
-        <Text style={styles.sectionTitle}>Skills</Text>
-        <View style={styles.skillsWrap}>
-          {data.skills.map((s, i) => (
-            <Text key={i} style={styles.skillItem}>
-              • {s}
-            </Text>
-          ))}
-        </View>
+            {education.map((e, i) =>
+              e.degree ? (
+                <View key={i} style={{ marginBottom: 6 }}>
+                  <Text style={styles.bold}>
+                    {e.degree} – {e.institute}
+                  </Text>
+                  <Text style={styles.muted}>
+                    {e.score} {e.year ? `| ${e.year}` : ""}
+                  </Text>
+                </View>
+              ) : null
+            )}
+          </View>
+        )}
+
+        {/* SKILLS - SINGLE COLUMN */}
+        {skills.filter(Boolean).length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Skills</Text>
+
+            {skills.map((s, i) =>
+              s ? (
+                <View key={i} style={styles.bulletRow}>
+                  <Text style={styles.bullet}>•</Text>
+                  <Text style={styles.bulletText}>{s}</Text>
+                </View>
+              ) : null
+            )}
+          </View>
+        )}
 
         {/* EXPERIENCE */}
-        <Text style={styles.sectionTitle}>Experience</Text>
-        {data.experience.map((e, i) => (
-          <View key={i}>
-            <Text style={styles.bold}>
-              {e.role} – {e.company}
-            </Text>
-            <Text style={styles.muted}>{e.duration}</Text>
+        {experience.filter(e => e.role).length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Experience</Text>
 
-            {e.points
-              .split("\n")
-              .filter(Boolean)
-              .map((pt, idx) => (
-                <View key={idx} style={styles.bulletRow}>
-                  <Text style={styles.bullet}>•</Text>
-                  <Text style={styles.bulletText}>{pt}</Text>
+            {experience.map((e, i) =>
+              e.role ? (
+                <View key={i} style={{ marginBottom: 8 }}>
+                  <Text style={styles.bold}>
+                    {e.role} – {e.company}
+                  </Text>
+                  <Text style={styles.muted}>{e.duration}</Text>
+
+                  {e.points &&
+                    e.points
+                      .split("\n")
+                      .filter(Boolean)
+                      .map((pt, idx) => (
+                        <View key={idx} style={styles.bulletRow}>
+                          <Text style={styles.bullet}>•</Text>
+                          <Text style={styles.bulletText}>{pt}</Text>
+                        </View>
+                      ))}
                 </View>
-              ))}
+              ) : null
+            )}
           </View>
-        ))}
+        )}
 
         {/* PROJECTS */}
-        <Text style={styles.sectionTitle}>Projects</Text>
-        {data.projects.map((p, i) => (
-          <View key={i}>
-            <Text>
-              <Text style={styles.bold}>{p.title}</Text>
-              {" | "}
-              <Text style={[styles.muted, styles.italic]}>
-                {p.tech}
-              </Text>
-            </Text>
+        {projects.filter(p => p.title).length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Projects</Text>
 
-            {p.points
-              .split("\n")
-              .filter(Boolean)
-              .map((pt, idx) => (
-                <View key={idx} style={styles.bulletRow}>
-                  <Text style={styles.bullet}>•</Text>
-                  <Text style={styles.bulletText}>{pt}</Text>
+            {projects.map((p, i) =>
+              p.title ? (
+                <View key={i} style={{ marginBottom: 8 }}>
+                  <Text>
+                    <Text style={styles.bold}>{p.title}</Text>
+                    {p.tech ? ` | ${p.tech}` : ""}
+                  </Text>
+
+                  {p.points &&
+                    p.points
+                      .split("\n")
+                      .filter(Boolean)
+                      .map((pt, idx) => (
+                        <View key={idx} style={styles.bulletRow}>
+                          <Text style={styles.bullet}>•</Text>
+                          <Text style={styles.bulletText}>{pt}</Text>
+                        </View>
+                      ))}
                 </View>
-              ))}
+              ) : null
+            )}
           </View>
-        ))}
+        )}
 
       </Page>
     </Document>
