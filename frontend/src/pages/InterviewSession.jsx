@@ -1,19 +1,45 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
+import CameraFeed from "./CameraFeed";
 
 export default function InterviewSession() {
   const { state } = useLocation();
   const { mode, value } = state || {};
+  const silenceTimerRef = useRef(null);
 
   /* ---------------- STATE ---------------- */
-  const [phase, setPhase] = useState("greeting"); // greeting | level | interview
+  const [phase, setPhase] = useState("greeting");
   const [level, setLevel] = useState("");
   const [question, setQuestion] = useState("");
   const [rawQuestion, setRawQuestion] = useState("");
-  const [transcript, setTranscript] = useState("");
+  const [finalTranscript, setFinalTranscript] = useState("");
+  const [interimTranscript, setInterimTranscript] = useState("");
   const [count, setCount] = useState(1);
-  const [timeLeft, setTimeLeft] = useState(60);
+  const [timeLeft, setTimeLeft] = useState(15);
   const [askedQuestions, setAskedQuestions] = useState([]);
+  const isExtendingRef = useRef(false);
+  const lastSpeechTimeRef = useRef(Date.now());
+  const [activeSpeaker, setActiveSpeaker] = useState("system");
+  const audioContextRef = useRef(null);
+  const analyserRef = useRef(null);
+  const dataArrayRef = useRef(null);
+  const videoRef = useRef(null);
+  const [cameraOn, setCameraOn] = useState(false);
+
+  // "system" | "user"
+
+  useEffect(() => {
+    const loadVoices = () => {
+      window.speechSynthesis.getVoices();
+    };
+
+    loadVoices();
+
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+  }, []);
+
+
+  const [voiceLevel, setVoiceLevel] = useState(0);
 
   const recognitionRef = useRef(null);
   const timerRef = useRef(null);
@@ -30,50 +56,124 @@ export default function InterviewSession() {
     return "Good evening";
   };
 
+  //Camera
+  useEffect(() => {
+    const startCameraOnLoad = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false,
+        });
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+          setCameraOn(true);
+        }
+      } catch (err) {
+        console.error("Camera start failed:", err);
+      }
+    };
+
+    startCameraOnLoad();
+  }, []);
+
+
+
+
+  const startWebcam = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: false,
+      });
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+
+        await videoRef.current.play();   // 👈 important
+        setCameraOn(true);
+      }
+    } catch (err) {
+      console.error("Camera error:", err);
+    }
+  };
+
+
+
+
   /* ---------------- SPEECH RECOGNITION ---------------- */
   useEffect(() => {
     if ("webkitSpeechRecognition" in window) {
       const recog = new window.webkitSpeechRecognition();
-      recog.continuous = false;
+      recog.continuous = true;
       recog.interimResults = true;
       recog.lang = "en-US";
 
       recog.onresult = (event) => {
-        let text = "";
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          text += event.results[i][0].transcript;
-        }
-        setTranscript(text);
-      };
+        clearTimeout(silenceTimerRef.current);
 
+        lastSpeechTimeRef.current = Date.now();
+
+        let finalText = "";
+        let interimText = "";
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const text = event.results[i][0].transcript;
+
+          if (event.results[i].isFinal) {
+            finalText += text + " ";
+          } else {
+            interimText += text;
+          }
+        }
+
+        if (finalText) {
+          setFinalTranscript((prev) => prev + finalText);
+        }
+
+        setInterimTranscript(interimText);
+      };
+      /*
       recog.onend = () => {
+        const fullText = finalTranscript + interimTranscript;
+
         if (
           phase === "interview" &&
           !speakingRef.current &&
-          transcript.trim().length > 3
+          fullText.trim().length > 3
         ) {
-          nextQuestion();
+          silenceTimerRef.current = setTimeout(() => {
+            nextQuestion();
+          }, 3000); // waits 3 seconds
         }
       };
+      */
+
 
       recognitionRef.current = recog;
     }
-  }, [phase, transcript]);
+  }, [phase]);
 
   /* ---------------- TEXT TO SPEECH ---------------- */
   const speak = (text, onEnd) => {
     speakingRef.current = true;
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = "en-US";
+    setActiveSpeaker("system"); // glow on system
 
-    u.onend = () => {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "en-US";
+
+    utterance.onend = () => {
       speakingRef.current = false;
-      onEnd && onEnd();
+      setActiveSpeaker("user"); // switch glow to user
+      if (onEnd) onEnd();
     };
 
     window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
+    window.speechSynthesis.speak(utterance);
   };
+
+
 
   /* ---------------- INITIAL GREETING ---------------- */
   useEffect(() => {
@@ -108,9 +208,53 @@ export default function InterviewSession() {
     });
   };
 
+  /*--Audio Analysis Function*/
+  const startAudioAnalysis = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const analyser = audioContext.createAnalyser();
+      const microphone = audioContext.createMediaStreamSource(stream);
+
+      analyser.fftSize = 256;
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      microphone.connect(analyser);
+
+      audioContextRef.current = audioContext;
+      analyserRef.current = analyser;
+      dataArrayRef.current = dataArray;
+
+      const checkVolume = () => {
+        analyser.getByteFrequencyData(dataArray);
+
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          sum += dataArray[i];
+        }
+
+        const avg = sum / bufferLength;
+
+        setVoiceLevel(avg); // 0 → 255
+
+        requestAnimationFrame(checkVolume);
+      };
+
+      checkVolume();
+    } catch (err) {
+      console.log("Mic analysis error:", err);
+    }
+  };
+
+
+
+
   /* ---------------- FETCH QUESTION ---------------- */
   const getQuestion = async (answerText = "", qCount = count, lvl = level) => {
-    setTranscript("");
+    setFinalTranscript("");
+    setInterimTranscript("");
     clearInterval(timerRef.current);
 
     try {
@@ -133,18 +277,19 @@ export default function InterviewSession() {
       }
 
       const cleanQ = data.question;
-      const displayQ = `Here is question number ${qCount}. ${cleanQ}`;
+      const displayQ = `Q${qCount}. ${cleanQ}`;
 
-      // UI FIRST
       setRawQuestion(cleanQ);
       setQuestion(displayQ);
       setAskedQuestions((prev) => [...prev, cleanQ]);
 
-      // Voice + mic + timer
       speak(displayQ, () => {
+        setActiveSpeaker("user");   // user turn starts
         recognitionRef.current?.start();
+        startAudioAnalysis();
         startTimer();
       });
+
     } catch (err) {
       console.error(err);
       setQuestion("Failed to load question.");
@@ -153,22 +298,57 @@ export default function InterviewSession() {
 
   /* ---------------- TIMER ---------------- */
   const startTimer = () => {
-    setTimeLeft(60);
+    setTimeLeft(15);
+    isExtendingRef.current = false;
+    lastSpeechTimeRef.current = Date.now();
+
     timerRef.current = setInterval(() => {
+      const now = Date.now();
+      const silenceDuration = (now - lastSpeechTimeRef.current) / 1000;
+
       setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timerRef.current);
-          nextQuestion();
-          return 0;
+
+        // 🟣 NORMAL COUNTDOWN (90 → 0)
+        if (!isExtendingRef.current) {
+          if (prev <= 1) {
+            // If still speaking → go into extension mode
+            if (silenceDuration < 2) {
+              isExtendingRef.current = true;
+              return -1;
+            }
+
+            // If NOT speaking → just stay at 0
+            return 0;
+          }
+
+          return prev - 1;
         }
-        return prev - 1;
+
+        // 🟢 EXTENSION MODE (+01, +02...)
+        if (isExtendingRef.current) {
+
+          // 🔴 ONLY HERE check silence
+          if (silenceDuration > 4) {
+            clearInterval(timerRef.current);
+            nextQuestion();
+            return prev;
+          }
+
+          return prev - 1;
+        }
+
+        return prev;
       });
+
     }, 1000);
   };
 
+
   const stopAll = () => {
     clearInterval(timerRef.current);
-    recognitionRef.current?.stop();
+    try {
+      recognitionRef.current?.stop();
+    } catch { }
   };
 
   /* ---------------- NEXT QUESTION ---------------- */
@@ -182,7 +362,15 @@ export default function InterviewSession() {
 
     const next = count + 1;
     setCount(next);
-    await getQuestion(transcript, next);
+    const fullAnswer = finalTranscript + interimTranscript;
+    await getQuestion(fullAnswer, next);
+  };
+
+  /* ---------------- END BUTTON ---------------- */
+  const endAndProceed = () => {
+    stopAll();
+    setTimeLeft(15);
+    nextQuestion();
   };
 
   /* ---------------- UI ---------------- */
@@ -190,7 +378,6 @@ export default function InterviewSession() {
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white flex justify-center items-center p-8">
       <div className="w-full max-w-[90rem] min-h-[85vh] bg-white rounded-2xl shadow-lg border border-purple-100 p-10">
 
-        {/* HEADER */}
         <h2 className="text-2xl font-semibold text-purple-700 mb-1">
           🎯 Mock Interview
         </h2>
@@ -198,12 +385,16 @@ export default function InterviewSession() {
           Mode: {mode} | Topic: {value}
         </p>
 
-        {/* MAIN GRID */}
         <div className="grid grid-cols-12 gap-8 h-full">
 
           {/* LEFT */}
           <div className="col-span-4 flex flex-col gap-6">
-            <div className="h-56 bg-purple-100 border border-purple-200 rounded-xl flex flex-col items-center justify-center">
+            <div
+              className={`h-56 bg-purple-100 border rounded-xl flex flex-col items-center justify-center ${activeSpeaker === "system"
+                ? "border-purple-400 shadow-[0_0_12px_rgba(168,85,247,0.35)]"
+                : "border-purple-200"
+                }`}
+            >
               <div className="w-16 h-16 rounded-full bg-purple-600 text-white flex items-center justify-center mb-2">
                 🤖
               </div>
@@ -211,72 +402,69 @@ export default function InterviewSession() {
               <p className="text-sm text-purple-500">AI Interviewer</p>
             </div>
 
-            <div className="h-56 bg-purple-100 border border-purple-200 rounded-xl flex flex-col items-center justify-center">
-              <div className="w-16 h-16 rounded-full bg-purple-400 text-white flex items-center justify-center mb-2">
-                👤
-              </div>
-              <p className="font-medium text-purple-700">User</p>
-              <p className="text-sm text-purple-500">Candidate</p>
+
+            <div className="h-56 bg-purple-100 border rounded-xl overflow-hidden">
+              <CameraFeed />
             </div>
+
+
+
+
           </div>
 
           {/* RIGHT */}
           <div className="col-span-8 bg-purple-50 border border-purple-200 rounded-xl p-8 flex flex-col justify-between">
 
-            {/* QUESTION */}
             <div>
-              <div className="flex justify-between mb-3">
-                <p className="text-xs uppercase tracking-wide text-purple-500">
-                  Question
-                </p>
-                {phase === "interview" && (
-                  <span className="text-sm text-purple-600">
-                    ⏱ 0:{timeLeft.toString().padStart(2, "0")}
-                  </span>
-                )}
-              </div>
+              <span
+                className={`text-sm font-semibold ${timeLeft > 10
+                  ? "text-purple-600"
+                  : timeLeft > 0
+                    ? "text-red-600 animate-pulse"
+                    : "text-green-600"
+                  }`}
+              >
+                {timeLeft > 0
+                  ? `⏱ 0:${timeLeft.toString().padStart(2, "0")}`
+                  : `⏱ +${Math.abs(timeLeft).toString().padStart(2, "0")}`}
+              </span>
+
+
 
               <p className="text-lg font-medium text-purple-900 leading-relaxed">
                 {question}
               </p>
             </div>
 
-            {/* LEVEL BUTTONS */}
             {phase === "level" && (
               <div className="flex justify-center gap-6">
-                <button
-                  onClick={() => chooseLevel("easy")}
-                  className="px-6 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200"
-                >
-                  Easy
-                </button>
-                <button
-                  onClick={() => chooseLevel("medium")}
-                  className="px-6 py-2 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200"
-                >
-                  Medium
-                </button>
-                <button
-                  onClick={() => chooseLevel("hard")}
-                  className="px-6 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200"
-                >
-                  Hard
-                </button>
+                <button onClick={() => chooseLevel("easy")} className="px-6 py-2 bg-green-100 text-green-700 rounded-lg">Easy</button>
+                <button onClick={() => chooseLevel("medium")} className="px-6 py-2 bg-yellow-100 text-yellow-700 rounded-lg">Medium</button>
+                <button onClick={() => chooseLevel("hard")} className="px-6 py-2 bg-red-100 text-red-700 rounded-lg">Hard</button>
               </div>
             )}
 
-            {/* ANSWER */}
             {phase === "interview" && (
               <>
                 <textarea
                   rows="7"
                   className="w-full bg-white border border-purple-300 rounded-lg p-4 focus:outline-none focus:ring-2 focus:ring-purple-400"
                   placeholder="User spoken answer will be converted to text here..."
-                  value={transcript}
-                  onChange={(e) => setTranscript(e.target.value)}
+                  value={finalTranscript + interimTranscript}
+                  onChange={(e) => setFinalTranscript(e.target.value)}
                 />
-                <div className="flex justify-end text-sm text-purple-600 mt-3">
-                  {count} / {MAX_QUESTIONS}
+
+                <div className="flex justify-between items-center mt-4">
+                  <button
+                    onClick={endAndProceed}
+                    className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                  >
+                    Next Question
+                  </button>
+
+                  <div className="text-sm text-purple-600">
+                    {count} / {MAX_QUESTIONS}
+                  </div>
                 </div>
               </>
             )}
