@@ -37,7 +37,7 @@ export default function CameraFeed() {
             autoPlay
             muted
             playsInline
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover scale-x-[-1]"
         />
     );
 }

@@ -1,13 +1,47 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+console.log("InterviewSetup Rendered");
+
 export default function InterviewSetup() {
   const [mode, setMode] = useState("role");
   const [selectedRole, setSelectedRole] = useState("Frontend Developer");
   const [selectedLanguage, setSelectedLanguage] = useState("C");
   const [resumeFile, setResumeFile] = useState(null);
+  const [resumePreview, setResumePreview] = useState("");
+  const [resumeData, setResumeData] = useState("");
 
   const navigate = useNavigate();
+
+  // ✅ PARSE RESUME BUTTON
+  const handleParseResume = async () => {
+    if (!resumeFile) {
+      alert("Please select a resume first");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("resume", resumeFile);
+
+    try {
+      const res = await fetch("http://localhost:5000/api/resume/parse", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error("Server error");
+
+      const data = await res.json();
+
+      setResumePreview(data.preview || "");
+      setResumeData(data.text || "");
+
+      alert("Resume parsed successfully");
+    } catch (err) {
+      console.error("Resume upload error:", err);
+      alert("Upload failed");
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-white">
@@ -63,7 +97,7 @@ export default function InterviewSetup() {
           </label>
         </div>
 
-        {/* Conditional Inputs */}
+        {/* Role Dropdown */}
         {mode === "role" && (
           <select
             value={selectedRole}
@@ -78,6 +112,7 @@ export default function InterviewSetup() {
           </select>
         )}
 
+        {/* Language Dropdown */}
         {mode === "language" && (
           <select
             value={selectedLanguage}
@@ -93,7 +128,7 @@ export default function InterviewSetup() {
           </select>
         )}
 
-        {/* ✅ Resume Upload with Button */}
+        {/* Resume Upload */}
         {mode === "resume" && (
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-600 mb-2">
@@ -101,7 +136,6 @@ export default function InterviewSetup() {
             </label>
 
             <div className="flex items-center gap-4">
-              {/* Hidden input */}
               <input
                 type="file"
                 id="resumeUpload"
@@ -110,7 +144,6 @@ export default function InterviewSetup() {
                 className="hidden"
               />
 
-              {/* Custom button */}
               <label
                 htmlFor="resumeUpload"
                 className="
@@ -123,7 +156,13 @@ export default function InterviewSetup() {
                 Choose Resume
               </label>
 
-              {/* File name */}
+              <button
+                onClick={handleParseResume}
+                className="px-5 py-2.5 rounded-lg bg-purple-600 text-white text-sm font-medium hover:bg-purple-700 transition"
+              >
+                Parse Resume
+              </button>
+
               <span className="text-sm text-gray-500 truncate max-w-[200px]">
                 {resumeFile ? resumeFile.name : "No file chosen"}
               </span>
@@ -133,19 +172,35 @@ export default function InterviewSetup() {
 
         {/* Start Button */}
         <button
-          onClick={() =>
+          onClick={() => {
+            if (mode !== "resume") {
+              navigate("/mock-interview/session", {
+                state: {
+                  mode,
+                  value:
+                    mode === "role"
+                      ? selectedRole
+                      : mode === "language"
+                      ? selectedLanguage
+                      : "",
+                },
+              });
+              return;
+            }
+
+            if (!resumeData) {
+              alert("Please parse resume first");
+              return;
+            }
+
             navigate("/mock-interview/session", {
               state: {
-                mode,
-                value:
-                  mode === "role"
-                    ? selectedRole
-                    : mode === "language"
-                    ? selectedLanguage
-                    : resumeFile?.name || "Resume",
+                mode: "resume",
+                value: resumeFile?.name || "Resume",
+                resumeText: resumeData,
               },
-            })
-          }
+            });
+          }}
           className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-md"
         >
           Start Interview

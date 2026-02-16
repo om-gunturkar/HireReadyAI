@@ -7,8 +7,12 @@ import robotAnimation from "../assets/robot.json";
 
 
 export default function InterviewSession() {
-  const { state } = useLocation();
-  const { mode, value } = state || {};
+  const location = useLocation();
+const state = location.state || {};
+
+const mode = state.mode || "";
+const value = state.value || "";
+const resumeText = state.resumeText || "";
   const silenceTimerRef = useRef(null);
 
   /* ---------------- STATE ---------------- */
@@ -44,6 +48,22 @@ export default function InterviewSession() {
 
 
   const [voiceLevel, setVoiceLevel] = useState(0);
+
+useEffect(() => {
+  const synth = window.speechSynthesis;
+
+  const loadVoices = () => {
+    const voices = synth.getVoices();
+    console.log("Available voices:", voices);
+  };
+
+  if (synth.onvoiceschanged !== undefined) {
+    synth.onvoiceschanged = loadVoices;
+  }
+
+  loadVoices();
+}, []);
+
 
   const recognitionRef = useRef(null);
   const timerRef = useRef(null);
@@ -161,47 +181,42 @@ export default function InterviewSession() {
 
   /* ---------------- TEXT TO SPEECH ---------------- */
   const speak = (text, onEnd) => {
-  speakingRef.current = true;
-  setActiveSpeaker("system");
+  const synth = window.speechSynthesis;
+
+  if (!synth) return;
+
+  synth.cancel(); // clear previous queue
 
   const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "en-US";
 
-  const voices = window.speechSynthesis.getVoices();
+  const voices = synth.getVoices();
 
-  // Try to pick female voice
-  const femaleVoice =
-    voices.find(v =>
-      v.name.toLowerCase().includes("female")
-    ) ||
-    voices.find(v =>
-      v.name.toLowerCase().includes("zira") // Windows female
-    ) ||
-    voices.find(v =>
-      v.name.toLowerCase().includes("google uk english female")
-    ) ||
-    voices.find(v =>
-      v.name.toLowerCase().includes("samantha") // Mac female
-    );
+  if (voices.length > 0) {
+    const female =
+      voices.find(v =>
+        v.name.includes("Zira") ||
+        v.name.includes("Samantha") ||
+        v.name.toLowerCase().includes("female")
+      ) || voices[0];
 
-  if (femaleVoice) {
-    utterance.voice = femaleVoice;
+    utterance.voice = female;
   }
 
-  utterance.rate = 1;      // normal speed
-  utterance.pitch = 1.2;   // slightly softer feminine tone
+  utterance.rate = 1;
+  utterance.pitch = 1.1;
+
+  utterance.onstart = () => {
+    setActiveSpeaker("system");
+  };
 
   utterance.onend = () => {
-    speakingRef.current = false;
     setActiveSpeaker("user");
     if (onEnd) onEnd();
   };
 
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(utterance);
+  synth.speak(utterance);
 };
-
-
-
 
   /* ---------------- INITIAL GREETING ---------------- */
   useEffect(() => {
@@ -287,15 +302,18 @@ export default function InterviewSession() {
 
     try {
       const res = await fetch("http://localhost:5000/api/interview/next", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode,
-          value,
-          level: lvl,
-          questionIndex: qCount - 1,
-        }),
-      });
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    mode,
+    value,
+    level: lvl,
+    questionIndex: qCount - 1,
+    resumeText: state?.resumeText || "",
+    previousAnswer: answerText || "",
+  }),
+});
+
 
       const data = await res.json();
 

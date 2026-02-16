@@ -2,9 +2,8 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const connectDB = require("./src/config/db");
-const resumeRoutes = require("./src/routes/resumeRoutes");
+const resumeRoutes = require("./src/routes/resume");
 const interviewRoutes = require("./src/routes/interviewRoutes");
-
 const app = express();
 connectDB();
 
