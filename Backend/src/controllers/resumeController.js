@@ -1,7 +1,6 @@
 const Resume = require("../models/Resume");
 const pdfParse = require("pdf-parse");
 
-
 /* =========================
    SAVE RESUME (DB)
 ========================= */
