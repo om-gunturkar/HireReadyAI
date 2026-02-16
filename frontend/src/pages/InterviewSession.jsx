@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import CameraFeed from "./CameraFeed";
+import Lottie from "lottie-react";
+import robotAnimation from "../assets/robot.json";
+// import robotAnimation from "https://assets2.lottiefiles.com/packages/lf20_2ks3pjua.json";
+
 
 export default function InterviewSession() {
   const { state } = useLocation();
@@ -157,21 +161,45 @@ export default function InterviewSession() {
 
   /* ---------------- TEXT TO SPEECH ---------------- */
   const speak = (text, onEnd) => {
-    speakingRef.current = true;
-    setActiveSpeaker("system"); // glow on system
+  speakingRef.current = true;
+  setActiveSpeaker("system");
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "en-US";
+  const utterance = new SpeechSynthesisUtterance(text);
 
-    utterance.onend = () => {
-      speakingRef.current = false;
-      setActiveSpeaker("user"); // switch glow to user
-      if (onEnd) onEnd();
-    };
+  const voices = window.speechSynthesis.getVoices();
 
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
+  // Try to pick female voice
+  const femaleVoice =
+    voices.find(v =>
+      v.name.toLowerCase().includes("female")
+    ) ||
+    voices.find(v =>
+      v.name.toLowerCase().includes("zira") // Windows female
+    ) ||
+    voices.find(v =>
+      v.name.toLowerCase().includes("google uk english female")
+    ) ||
+    voices.find(v =>
+      v.name.toLowerCase().includes("samantha") // Mac female
+    );
+
+  if (femaleVoice) {
+    utterance.voice = femaleVoice;
+  }
+
+  utterance.rate = 1;      // normal speed
+  utterance.pitch = 1.2;   // slightly softer feminine tone
+
+  utterance.onend = () => {
+    speakingRef.current = false;
+    setActiveSpeaker("user");
+    if (onEnd) onEnd();
   };
+
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utterance);
+};
+
 
 
 
@@ -390,26 +418,28 @@ export default function InterviewSession() {
           {/* LEFT */}
           <div className="col-span-4 flex flex-col gap-6">
             <div
-              className={`h-56 bg-purple-100 border rounded-xl flex flex-col items-center justify-center ${activeSpeaker === "system"
-                ? "border-purple-400 shadow-[0_0_12px_rgba(168,85,247,0.35)]"
-                : "border-purple-200"
-                }`}
-            >
-              <div className="w-16 h-16 rounded-full bg-purple-600 text-white flex items-center justify-center mb-2">
-                🤖
-              </div>
-              <p className="font-medium text-purple-700">System</p>
-              <p className="text-sm text-purple-500">AI Interviewer</p>
-            </div>
-
+  className={`h-64 bg-purple-100 border rounded-xl flex items-center justify-center ${
+    activeSpeaker === "system"
+      ? "border-purple-400 shadow-[0_0_12px_rgba(168,85,247,0.35)]"
+      : "border-purple-200"
+  }`}
+>
+  {robotAnimation && (
+    <Lottie
+      animationData={robotAnimation}
+      loop={activeSpeaker === "system"}
+      autoplay={activeSpeaker === "system"}
+      style={{
+        width: 220,
+        height: 220,
+      }}
+    />
+  )}
+</div>
 
             <div className="h-56 bg-purple-100 border rounded-xl overflow-hidden">
               <CameraFeed />
             </div>
-
-
-
-
           </div>
 
           {/* RIGHT */}
