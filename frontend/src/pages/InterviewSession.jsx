@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import CameraFeed from "./CameraFeed";
 import Lottie from "lottie-react";
+import { useNavigate } from "react-router-dom";
+
 import robotAnimation from "../assets/robot.json";
 // import robotAnimation from "https://assets2.lottiefiles.com/packages/lf20_2ks3pjua.json";
 
@@ -9,6 +11,7 @@ import robotAnimation from "../assets/robot.json";
 export default function InterviewSession() {
   const location = useLocation();
 const state = location.state || {};
+const navigate = useNavigate();
 
 const mode = state.mode || "";
 const value = state.value || "";
@@ -240,16 +243,26 @@ useEffect(() => {
   }, [phase]);
 
   /* ---------------- LEVEL SELECTION ---------------- */
-  const chooseLevel = (lvl) => {
-    setLevel(lvl);
-    const msg = `You have selected the ${lvl} level. Let's start the interview.`;
-    setQuestion(msg);
+  const chooseLevel = async (lvl) => {
+  setLevel(lvl);
 
-    speak(msg, () => {
-      setPhase("interview");
-      getQuestion("", 1, lvl);
-    });
-  };
+  // 👇 CALL START INTERVIEW API HERE
+  await fetch("http://localhost:5000/api/interview/start", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ resumeText, level: lvl }),
+});
+
+
+  const msg = `You have selected the ${lvl} level. Let's start the interview.`;
+  setQuestion(msg);
+
+  speak(msg, () => {
+    setPhase("interview");
+    getQuestion(""); // just call next
+  });
+};
+
 
   /*--Audio Analysis Function*/
   const startAudioAnalysis = async () => {
@@ -291,7 +304,12 @@ useEffect(() => {
     }
   };
 
-
+const cleanResume = (text) => {
+  return text
+    .replace(/linkedin|github|portfolio|gmail|@\S+|\+91\d+/gi, "")
+    .replace(/\b[A-Z][a-z]+ [A-Z][a-z]+\b/g, "") // remove name-like patterns
+    .trim();
+};
 
 
   /* ---------------- FETCH QUESTION ---------------- */
@@ -309,7 +327,8 @@ useEffect(() => {
     value,
     level: lvl,
     questionIndex: qCount - 1,
-    resumeText: state?.resumeText || "",
+    resumeText: cleanResume(state?.resumeText || ""),
+
     previousAnswer: answerText || "",
   }),
 });
@@ -418,6 +437,31 @@ useEffect(() => {
     setTimeLeft(15);
     nextQuestion();
   };
+  const stopInterview = () => {
+  // Stop timer
+  clearInterval(timerRef.current);
+
+  // Stop speech recognition
+  try {
+    recognitionRef.current?.stop();
+  } catch {}
+
+  // Stop speech synthesis
+  window.speechSynthesis.cancel();
+
+  // Stop camera
+  if (videoRef.current?.srcObject) {
+    videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+  }
+
+  // Stop audio context
+  if (audioContextRef.current) {
+    audioContextRef.current.close();
+  }
+
+  // Navigate back
+  navigate("/interviewsetup");
+};
 
   /* ---------------- UI ---------------- */
   return (
@@ -502,10 +546,17 @@ useEffect(() => {
                   onChange={(e) => setFinalTranscript(e.target.value)}
                 />
 
-                <div className="flex justify-between items-center mt-4">
+                <div className="flex justify-between items-center mt-4 gap-6">
+  <button
+    onClick={stopInterview}
+    className="px-6 py-2 bg-[#9c142f] text-white rounded-lg hover:bg-red-600"
+  >
+    Stop Interview
+  </button>
+
                   <button
                     onClick={endAndProceed}
-                    className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                    className="px-6 py-2 bg-[#207018] text-white rounded-lg hover:bg-green-600"
                   >
                     Next Question
                   </button>
