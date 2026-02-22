@@ -119,8 +119,7 @@ export default function InterviewSetup() {
             onChange={(e) => setSelectedLanguage(e.target.value)}
             className="w-full mb-6 p-3 rounded-md bg-gray-50 border border-gray-300"
           >
-            <option>C</option>
-            <option>C++</option>
+            <option>C/C++</option>
             <option>Java</option>
             <option>Python</option>
             <option>JavaScript</option>
@@ -181,8 +180,8 @@ export default function InterviewSetup() {
                     mode === "role"
                       ? selectedRole
                       : mode === "language"
-                      ? selectedLanguage
-                      : "",
+                        ? selectedLanguage
+                        : "",
                 },
               });
               return;

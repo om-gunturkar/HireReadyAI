@@ -10,14 +10,14 @@ import robotAnimation from "../assets/robot.json";
 
 export default function InterviewSession() {
   const location = useLocation();
-const state = location.state || {};
-const navigate = useNavigate();
+  const state = location.state || {};
+  const navigate = useNavigate();
 
-const mode = state.mode || "";
-const value = state.value || "";
-const resumeText = state.resumeText || "";
+  const mode = state.mode || "";
+  const value = state.value || "";
+  const resumeText = state.resumeText || "";
   const silenceTimerRef = useRef(null);
-
+  const levelRef = useRef("");
   /* ---------------- STATE ---------------- */
   const [phase, setPhase] = useState("greeting");
   const [level, setLevel] = useState("");
@@ -52,20 +52,20 @@ const resumeText = state.resumeText || "";
 
   const [voiceLevel, setVoiceLevel] = useState(0);
 
-useEffect(() => {
-  const synth = window.speechSynthesis;
+  useEffect(() => {
+    const synth = window.speechSynthesis;
 
-  const loadVoices = () => {
-    const voices = synth.getVoices();
-    console.log("Available voices:", voices);
-  };
+    const loadVoices = () => {
+      const voices = synth.getVoices();
+      console.log("Available voices:", voices);
+    };
 
-  if (synth.onvoiceschanged !== undefined) {
-    synth.onvoiceschanged = loadVoices;
-  }
+    if (synth.onvoiceschanged !== undefined) {
+      synth.onvoiceschanged = loadVoices;
+    }
 
-  loadVoices();
-}, []);
+    loadVoices();
+  }, []);
 
 
   const recognitionRef = useRef(null);
@@ -184,42 +184,42 @@ useEffect(() => {
 
   /* ---------------- TEXT TO SPEECH ---------------- */
   const speak = (text, onEnd) => {
-  const synth = window.speechSynthesis;
+    const synth = window.speechSynthesis;
 
-  if (!synth) return;
+    if (!synth) return;
 
-  synth.cancel(); // clear previous queue
+    synth.cancel(); // clear previous queue
 
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = "en-US";
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "en-US";
 
-  const voices = synth.getVoices();
+    const voices = synth.getVoices();
 
-  if (voices.length > 0) {
-    const female =
-      voices.find(v =>
-        v.name.includes("Zira") ||
-        v.name.includes("Samantha") ||
-        v.name.toLowerCase().includes("female")
-      ) || voices[0];
+    if (voices.length > 0) {
+      const female =
+        voices.find(v =>
+          v.name.includes("Zira") ||
+          v.name.includes("Samantha") ||
+          v.name.toLowerCase().includes("female")
+        ) || voices[0];
 
-    utterance.voice = female;
-  }
+      utterance.voice = female;
+    }
 
-  utterance.rate = 1;
-  utterance.pitch = 1.1;
+    utterance.rate = 1;
+    utterance.pitch = 1.1;
 
-  utterance.onstart = () => {
-    setActiveSpeaker("system");
+    utterance.onstart = () => {
+      setActiveSpeaker("system");
+    };
+
+    utterance.onend = () => {
+      setActiveSpeaker("user");
+      if (onEnd) onEnd();
+    };
+
+    synth.speak(utterance);
   };
-
-  utterance.onend = () => {
-    setActiveSpeaker("user");
-    if (onEnd) onEnd();
-  };
-
-  synth.speak(utterance);
-};
 
   /* ---------------- INITIAL GREETING ---------------- */
   useEffect(() => {
@@ -244,24 +244,17 @@ useEffect(() => {
 
   /* ---------------- LEVEL SELECTION ---------------- */
   const chooseLevel = async (lvl) => {
-  setLevel(lvl);
+    setLevel(lvl);
+    levelRef.current = lvl;
 
-  // 👇 CALL START INTERVIEW API HERE
-  await fetch("http://localhost:5000/api/interview/start", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ resumeText, level: lvl }),
-});
+    const msg = `You have selected the ${lvl} level. Let's start the interview.`;
+    setQuestion(msg);
 
-
-  const msg = `You have selected the ${lvl} level. Let's start the interview.`;
-  setQuestion(msg);
-
-  speak(msg, () => {
-    setPhase("interview");
-    getQuestion(""); // just call next
-  });
-};
+    speak(msg, () => {
+      setPhase("interview");
+      getQuestion("", 1, lvl); // just call next
+    });
+  };
 
 
   /*--Audio Analysis Function*/
@@ -304,34 +297,30 @@ useEffect(() => {
     }
   };
 
-const cleanResume = (text) => {
-  return text
-    .replace(/linkedin|github|portfolio|gmail|@\S+|\+91\d+/gi, "")
-    .replace(/\b[A-Z][a-z]+ [A-Z][a-z]+\b/g, "") // remove name-like patterns
-    .trim();
-};
+  const cleanResume = (text) => {
+    return text
+      .replace(/linkedin|github|portfolio|gmail|@\S+|\+91\d+/gi, "")
+      .replace(/\b[A-Z][a-z]+ [A-Z][a-z]+\b/g, "") // remove name-like patterns
+      .trim();
+  };
 
 
   /* ---------------- FETCH QUESTION ---------------- */
-  const getQuestion = async (answerText = "", qCount = count, lvl = level) => {
+  const getQuestion = async (answerText = "", qCount = count) => {
     setFinalTranscript("");
     setInterimTranscript("");
     clearInterval(timerRef.current);
 
     try {
       const res = await fetch("http://localhost:5000/api/interview/next", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    mode,
-    value,
-    level: lvl,
-    questionIndex: qCount - 1,
-    resumeText: cleanResume(state?.resumeText || ""),
-
-    previousAnswer: answerText || "",
-  }),
-});
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: mode,
+          role: value,
+          level: levelRef.current,
+        }),
+      });
 
 
       const data = await res.json();
@@ -373,27 +362,31 @@ const cleanResume = (text) => {
 
       setTimeLeft((prev) => {
 
-        // 🟣 NORMAL COUNTDOWN (90 → 0)
+        // ⏳ NORMAL COUNTDOWN
         if (!isExtendingRef.current) {
+
           if (prev <= 1) {
-            // If still speaking → go into extension mode
+
+            // If user still speaking → extend
             if (silenceDuration < 2) {
               isExtendingRef.current = true;
               return -1;
             }
 
-            // If NOT speaking → just stay at 0
+            // If NOT speaking → go next question
+            clearInterval(timerRef.current);
+            nextQuestion();
             return 0;
           }
 
           return prev - 1;
         }
 
-        // 🟢 EXTENSION MODE (+01, +02...)
+        // ⏫ EXTENSION MODE
         if (isExtendingRef.current) {
 
-          // 🔴 ONLY HERE check silence
-          if (silenceDuration > 4) {
+          // If silence detected during extension → move next
+          if (silenceDuration > 3) {
             clearInterval(timerRef.current);
             nextQuestion();
             return prev;
@@ -425,10 +418,11 @@ const cleanResume = (text) => {
       return;
     }
 
-    const next = count + 1;
-    setCount(next);
-    const fullAnswer = finalTranscript + interimTranscript;
-    await getQuestion(fullAnswer, next);
+    setCount((prev) => {
+      const newCount = prev + 1;
+      getQuestion(finalTranscript + interimTranscript, newCount);
+      return newCount;
+    });
   };
 
   /* ---------------- END BUTTON ---------------- */
@@ -438,30 +432,30 @@ const cleanResume = (text) => {
     nextQuestion();
   };
   const stopInterview = () => {
-  // Stop timer
-  clearInterval(timerRef.current);
+    // Stop timer
+    clearInterval(timerRef.current);
 
-  // Stop speech recognition
-  try {
-    recognitionRef.current?.stop();
-  } catch {}
+    // Stop speech recognition
+    try {
+      recognitionRef.current?.stop();
+    } catch { }
 
-  // Stop speech synthesis
-  window.speechSynthesis.cancel();
+    // Stop speech synthesis
+    window.speechSynthesis.cancel();
 
-  // Stop camera
-  if (videoRef.current?.srcObject) {
-    videoRef.current.srcObject.getTracks().forEach(track => track.stop());
-  }
+    // Stop camera
+    if (videoRef.current?.srcObject) {
+      videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+    }
 
-  // Stop audio context
-  if (audioContextRef.current) {
-    audioContextRef.current.close();
-  }
+    // Stop audio context
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+    }
 
-  // Navigate back
-  navigate("/interviewsetup");
-};
+    // Navigate back
+    navigate("/interviewsetup");
+  };
 
   /* ---------------- UI ---------------- */
   return (
@@ -480,24 +474,23 @@ const cleanResume = (text) => {
           {/* LEFT */}
           <div className="col-span-4 flex flex-col gap-6">
             <div
-  className={`h-64 bg-purple-100 border rounded-xl flex items-center justify-center ${
-    activeSpeaker === "system"
-      ? "border-purple-400 shadow-[0_0_12px_rgba(168,85,247,0.35)]"
-      : "border-purple-200"
-  }`}
->
-  {robotAnimation && (
-    <Lottie
-      animationData={robotAnimation}
-      loop={activeSpeaker === "system"}
-      autoplay={activeSpeaker === "system"}
-      style={{
-        width: 220,
-        height: 220,
-      }}
-    />
-  )}
-</div>
+              className={`h-64 bg-purple-100 border rounded-xl flex items-center justify-center ${activeSpeaker === "system"
+                ? "border-purple-400 shadow-[0_0_12px_rgba(168,85,247,0.35)]"
+                : "border-purple-200"
+                }`}
+            >
+              {robotAnimation && (
+                <Lottie
+                  animationData={robotAnimation}
+                  loop={activeSpeaker === "system"}
+                  autoplay={activeSpeaker === "system"}
+                  style={{
+                    width: 220,
+                    height: 220,
+                  }}
+                />
+              )}
+            </div>
 
             <div className="h-56 bg-purple-100 border rounded-xl overflow-hidden">
               <CameraFeed />
@@ -531,7 +524,7 @@ const cleanResume = (text) => {
             {phase === "level" && (
               <div className="flex justify-center gap-6">
                 <button onClick={() => chooseLevel("easy")} className="px-6 py-2 bg-green-100 text-green-700 rounded-lg">Easy</button>
-                <button onClick={() => chooseLevel("medium")} className="px-6 py-2 bg-yellow-100 text-yellow-700 rounded-lg">Medium</button>
+                <button onClick={() => chooseLevel("moderate")} className="px-6 py-2 bg-yellow-100 text-yellow-700 rounded-lg">Moderate</button>
                 <button onClick={() => chooseLevel("hard")} className="px-6 py-2 bg-red-100 text-red-700 rounded-lg">Hard</button>
               </div>
             )}
@@ -547,12 +540,12 @@ const cleanResume = (text) => {
                 />
 
                 <div className="flex justify-between items-center mt-4 gap-6">
-  <button
-    onClick={stopInterview}
-    className="px-6 py-2 bg-[#9c142f] text-white rounded-lg hover:bg-red-600"
-  >
-    Stop Interview
-  </button>
+                  <button
+                    onClick={stopInterview}
+                    className="px-6 py-2 bg-[#9c142f] text-white rounded-lg hover:bg-red-600"
+                  >
+                    Stop Interview
+                  </button>
 
                   <button
                     onClick={endAndProceed}

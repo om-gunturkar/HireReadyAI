@@ -1,7 +1,7 @@
-const { GoogleGenAI } = require("@google/genai");
+const Groq = require("groq-sdk");
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
 });
 
 // Interview state
@@ -18,6 +18,7 @@ exports.startInterview = (resumeText, level) => {
     level: level || "easy",
     totalQuestionCount: 0,
     maxQuestions: 15,
+    askedQuestions: [], // NEW
   };
 };
 
@@ -49,12 +50,13 @@ Return only the question.
 `;
     }
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: prompt,
+    const response = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile", // free & good model
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.7,
     });
 
-    const question = response.text.trim();
+    const question = response.choices[0].message.content.trim();
 
     interviewState.totalQuestionCount++;
 
@@ -63,9 +65,8 @@ Return only the question.
       done: false,
       totalQuestionCount: interviewState.totalQuestionCount,
     };
-
   } catch (err) {
-    console.error("Gemini Error:", err.message);
+    console.error("Groq Error:", err.message);
 
     return {
       question: "AI generation failed.",
