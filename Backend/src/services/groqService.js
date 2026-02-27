@@ -29,23 +29,30 @@ exports.generateNextQuestion = async (previousAnswer = "") => {
     }
 
     let prompt = `
-You are a strict technical interviewer.
+You are a strict technical interviewer conducting an interview based on the candidate's resume.
 
 Candidate resume:
 ${interviewState.resumeText}
 
 Difficulty: ${interviewState.level}
 
-Generate ONE technical interview question.
+Generate ONE technical interview question based on the candidate's resume and experience.
 Return only the question.
 `;
 
     if (previousAnswer) {
       prompt = `
-Candidate answered:
+You are continuing a technical interview based on the candidate's resume.
+
+Candidate resume:
+${interviewState.resumeText}
+
+Difficulty: ${interviewState.level}
+
+Candidate's previous answer:
 "${previousAnswer}"
 
-Ask ONE deep follow-up technical question.
+Ask ONE deep follow-up technical question related to their resume or their previous answer.
 Return only the question.
 `;
     }

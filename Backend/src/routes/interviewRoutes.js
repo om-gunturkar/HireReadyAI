@@ -16,13 +16,16 @@ const java = require("../questions/language/java");
 const javascript = require("../questions/language/javascript");
 const python = require("../questions/language/python");
 
+// Groq service for resume-based interviews
+const groqService = require("../services/groqService");
+
 // Helper function to get random question
 function getRandomQuestion(questionsArray) {
   const randomIndex = Math.floor(Math.random() * questionsArray.length);
   return questionsArray[randomIndex];
 }
 
-router.post("/next", (req, res) => {
+router.post("/next", async (req, res) => {
   console.log("Incoming body:", req.body);
   let { type, role, level } = req.body;
 
@@ -87,9 +90,24 @@ router.post("/next", (req, res) => {
 
   // ================= RESUME BASED =================
   else if (type === "resume") {
-    return res.json({
-      question: "Resume-based interview currently disabled.",
-    });
+    // For resume-based interviews, we need resumeText from the request body
+    const { resumeText, previousAnswer } = req.body;
+
+    if (!resumeText) {
+      return res.status(400).json({ error: "Resume text is required for resume-based interview" });
+    }
+
+    // Initialize or update the groq service with resume context
+    groqService.startInterview(resumeText, level);
+
+    // Generate question using Groq (resume-based)
+    try {
+      const result = await groqService.generateNextQuestion(previousAnswer);
+      return res.json(result);
+    } catch (err) {
+      console.error("Groq service error:", err);
+      return res.status(500).json({ error: "Failed to generate question" });
+    }
   }
 
   if (!selectedQuestions || !Array.isArray(selectedQuestions)) {

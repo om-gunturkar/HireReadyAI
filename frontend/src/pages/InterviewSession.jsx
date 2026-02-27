@@ -312,14 +312,24 @@ export default function InterviewSession() {
     clearInterval(timerRef.current);
 
     try {
+      const requestBody = {
+        type: mode,
+        role: value,
+        level: levelRef.current,
+      };
+
+      // Add resumeText for resume-based interviews
+      if (mode === "resume") {
+        requestBody.resumeText = resumeText;
+        if (answerText) {
+          requestBody.previousAnswer = answerText;
+        }
+      }
+
       const res = await fetch("http://localhost:5000/api/interview/next", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: mode,
-          role: value,
-          level: levelRef.current,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
 
