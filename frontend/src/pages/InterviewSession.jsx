@@ -3,6 +3,16 @@ import { useLocation } from "react-router-dom";
 import CameraFeed from "./CameraFeed";
 import Lottie from "lottie-react";
 import { useNavigate } from "react-router-dom";
+import TopAlertBar from "../components/TopAlertBar";
+import AIMonitoringStatus from "../components/AIMonitoringStatus";
+import {
+  loadFaceModels,
+  analyzeFace,
+  calculateConfidenceScore,
+  getTopBarAlert,
+  postEmotion,
+} from "../services/facialAnalysisService"; // postEmotion will send data to backend
+
 
 import robotAnimation from "../assets/robot.json";
 // import robotAnimation from "https://assets2.lottiefiles.com/packages/lf20_2ks3pjua.json";
@@ -35,9 +45,31 @@ export default function InterviewSession() {
   const analyserRef = useRef(null);
   const dataArrayRef = useRef(null);
   const videoRef = useRef(null);
+  const canvasRef = useRef(null); // used to draw bounding box
   const [cameraOn, setCameraOn] = useState(false);
 
-  // "system" | "user"
+  // Facial Analysis State
+  const [currentMetrics, setCurrentMetrics] = useState(null);
+  const [metricsHistory, setMetricsHistory] = useState([]);
+  const [topAlert, setTopAlert] = useState(null); // {id,type,message}
+  const alertTimerRef = useRef(null); // for auto hide
+  const [dismissedAlerts, setDismissedAlerts] = useState({}); // id -> timestamp
+  const facialAnalysisIntervalRef = useRef(null);
+  const modelLoadedRef = useRef(false);
+  const lastHeadPosRef = useRef("forward"); // remembers last known head orientation
+
+  // alert state tracker (ref so mutations don't trigger renders)
+  const alertStateRef = useRef({
+    faceNotDetected: false,
+    faceNotDetectedStart: null,
+    headTurnedAway: false,
+    headAwayStart: null, // timestamp when head first moved away
+    nervousStart: null,
+    nervous: false, // whether nervous alert already shown
+    nervousCount: 0, // consecutive nervous samples
+    multiplePersons: false,
+  });
+  const lastDataAlertRef = useRef(0); // timestamp of last data-sent alert
 
   useEffect(() => {
     const loadVoices = () => {
@@ -47,6 +79,12 @@ export default function InterviewSession() {
     loadVoices();
 
     window.speechSynthesis.onvoiceschanged = loadVoices;
+
+    // Load face detection models
+    loadFaceModels().then(() => {
+      modelLoadedRef.current = true;
+      console.log("✅ Face models loaded successfully");
+    });
   }, []);
 
 
@@ -83,53 +121,305 @@ export default function InterviewSession() {
     return "Good evening";
   };
 
-  //Camera
+  //Camera + Facial Analysis
   useEffect(() => {
-    const startCameraOnLoad = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: false,
-        });
-
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-          setCameraOn(true);
-        }
-      } catch (err) {
-        console.error("Camera start failed:", err);
+    const startFacialAnalysis = async () => {
+      if (!videoRef.current) {
+        console.warn("⚠️ Video ref not available");
+        return;
       }
+
+      // Wait until video element has enough data to analyze
+      const checkVideoReady = setInterval(() => {
+        if (
+          videoRef.current &&
+          videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA
+        ) {
+          clearInterval(checkVideoReady);
+
+          if (modelLoadedRef.current) {
+            console.log("✅ Starting facial analysis...");
+
+            facialAnalysisIntervalRef.current = setInterval(async () => {
+              if (
+                videoRef.current &&
+                videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA
+              ) {
+                const metrics = await analyzeFace(videoRef.current);
+                if (metrics) {
+                  const now = Date.now();
+
+                  // ===== FACE VISIBILITY MONITORING =====
+                  if (metrics.faceDetected) {
+                    // keep track of orientation
+                    lastHeadPosRef.current = metrics.headPosition || "forward";
+
+                    if (alertStateRef.current.faceNotDetected) {
+                      // State transition: face was missing, now detected
+                      alertStateRef.current.faceNotDetected = false;
+                      alertStateRef.current.faceNotDetectedStart = null;
+                      // positive notification briefly
+                      const alertObj = {
+                        id: "face-back",
+                        type: "info",
+                        message:
+                          "Face detected. You may continue the interview.",
+                      };
+                      setTopAlert(alertObj);
+                    }
+                  } else {
+                    // if face is gone but we remembered a head tilt, treat as focus issue
+                    const wasTilt = lastHeadPosRef.current !== "forward";
+                    if (wasTilt) {
+                      // show head-movement alert immediately
+                      if (!alertStateRef.current.headTurnedAway) {
+                        alertStateRef.current.headTurnedAway = true;
+                        const alertObj = {
+                          id: "head-movement",
+                          type: "warning",
+                          message: "Please maintain your focus on the interview screen.",
+                        };
+                        if (shouldShow(alertObj)) setTopAlert(alertObj);
+                      }
+                    } else {
+                      // normal face visibility handling
+                      if (!alertStateRef.current.faceNotDetectedStart) {
+                        alertStateRef.current.faceNotDetectedStart = now;
+                      } else if (
+                        now - alertStateRef.current.faceNotDetectedStart > 3000
+                      ) {
+                        if (!alertStateRef.current.faceNotDetected) {
+                          // State transition: face missing for 3s
+                          alertStateRef.current.faceNotDetected = true;
+                          const alertObj = {
+                            id: "no-face",
+                            type: "warning",
+                            message:
+                            "Your face is not clearly visible. Please adjust your position.",
+                          };
+                          if (shouldShow(alertObj)) {
+                            setTopAlert(alertObj);
+                          }
+                        }
+                      }
+                    }
+                  }
+
+                  // ===== HEAD MOVEMENT / ATTENTION MONITORING =====
+                  const isHeadForward = metrics.headPosition === "forward";
+                  if (!isHeadForward) {
+                    // head not forward -> start or continue timer
+                    if (!alertStateRef.current.headAwayStart) {
+                      alertStateRef.current.headAwayStart = now;
+                    } else if (
+                      now - alertStateRef.current.headAwayStart > 3000 &&
+                      !alertStateRef.current.headTurnedAway
+                    ) {
+                      // persisted away more than 3s, show alert once
+                      alertStateRef.current.headTurnedAway = true;
+                      const alertObj = {
+                        id: "head-movement",
+                        type: "warning",
+                        message: "Please maintain your focus on the interview screen.",
+                      };
+                      if (shouldShow(alertObj)) {
+                        setTopAlert(alertObj);
+                      }
+                    }
+                  } else {
+                    // head returned to forward
+                    alertStateRef.current.headAwayStart = null;
+                    if (alertStateRef.current.headTurnedAway) {
+                      alertStateRef.current.headTurnedAway = false;
+                      setTopAlert(null);
+                    }
+                  }
+
+                  // ===== NERVOUS EXPRESSION ALERT (smoothed) =====
+                  // Use consecutive sample counting to avoid resets caused by
+                  // intermittent fluctuations. Samples are taken every ~2000ms.
+                  const expr = metrics.expressions || {};
+                  const nervousScore = (expr.fearful || 0) + (expr.sad || 0) + (expr.disgusted || 0);
+                  const isNervousFrame =
+                    nervousScore > 0.25 ||
+                    metrics.emotion === "fearful" ||
+                    metrics.emotion === "sad" ||
+                    metrics.emotion === "disgusted";
+
+                  if (isNervousFrame) {
+                    alertStateRef.current.nervousCount = (alertStateRef.current.nervousCount || 0) + 1;
+                    console.log("[nervous] score", nervousScore, "count", alertStateRef.current.nervousCount, "dominant", metrics.emotion);
+                  } else {
+                    if (alertStateRef.current.nervousCount > 0) console.log("[nervous] reset");
+                    alertStateRef.current.nervousCount = 0;
+                    // clear shown flag when expression normalizes so it can trigger again later
+                    alertStateRef.current.nervous = false;
+                  }
+
+                  // require N consecutive samples -> with 2s sampling interval, 3 samples ~= 6s
+                  const REQUIRED_NERVOUS_SAMPLES = 3;
+                  if (alertStateRef.current.nervousCount >= REQUIRED_NERVOUS_SAMPLES && !alertStateRef.current.nervous) {
+                    alertStateRef.current.nervous = true;
+                    const alertObj = {
+                      id: "nervous",
+                      type: "warning",
+                      message: "You appear slightly nervous. Please relax and continue confidently.",
+                    };
+                    if (shouldShow(alertObj)) setTopAlert(alertObj);
+                  }
+
+                  // ===== MULTIPLE FACE DETECTION =====
+                  if (metrics.multiplePersons) {
+                    if (!alertStateRef.current.multiplePersons) {
+                      // State transition: multiple faces detected
+                      alertStateRef.current.multiplePersons = true;
+                      const alertObj = {
+                        id: "multiple-face",
+                        type: "warning",
+                        message:
+                          "Multiple people detected. Please ensure you are alone during the interview.",
+                      };
+                      if (shouldShow(alertObj)) {
+                        setTopAlert(alertObj);
+                      }
+                    }
+                  } else {
+                    if (alertStateRef.current.multiplePersons) {
+                      // State transition: back to single face
+                      alertStateRef.current.multiplePersons = false;
+                      if (topAlert?.id === "multiple-face") {
+                        setTopAlert(null);
+                      }
+                    }
+                  }
+
+                  // ===== UPDATE METRICS =====
+                  const confidence = calculateConfidenceScore(metrics);
+                  const metricsWithConfidence = { ...metrics, confidence };
+                  setCurrentMetrics(metricsWithConfidence);
+                  setMetricsHistory((prev) => [...prev, metricsWithConfidence]);
+
+                  // ===== DRAW BOUNDING BOX =====
+                  if (metricsWithConfidence.boundingBox) {
+                    const ctx = canvasRef.current?.getContext("2d");
+                    const vid = videoRef.current;
+                    if (ctx && vid) {
+                      canvasRef.current.width = vid.videoWidth;
+                      canvasRef.current.height = vid.videoHeight;
+                      ctx.clearRect(
+                        0,
+                        0,
+                        canvasRef.current.width,
+                        canvasRef.current.height
+                      );
+                      ctx.strokeStyle = "#00FF00";
+                      ctx.lineWidth = 2;
+                      let { x, y, width, height } =
+                        metricsWithConfidence.boundingBox;
+                      const vw = canvasRef.current.width;
+                      x = vw - x - width;
+                      ctx.strokeRect(x, y, width, height);
+                    }
+                  } else if (canvasRef.current) {
+                    const ctx = canvasRef.current.getContext("2d");
+                    ctx.clearRect(
+                      0,
+                      0,
+                      canvasRef.current.width,
+                      canvasRef.current.height
+                    );
+                  }
+
+                  // ===== SEND DATA TO BACKEND =====
+                  const attention = isHeadForward ? 1 : 0; // 1 for good, 0 for poor
+                  postEmotion({
+                    emotion: metricsWithConfidence.emotion || "",
+                    confidence: metricsWithConfidence.confidence,
+                    attention,
+                    timestamp: new Date().toISOString(),
+                  }).then(() => {
+                    const now = Date.now();
+                    // notify user that data is recorded but only once every 30s
+                    if (now - lastDataAlertRef.current > 30000) {
+                      lastDataAlertRef.current = now;
+                      const alertObj = {
+                        id: "data-sent",
+                        type: "info",
+                        message:
+                          "Your responses are being securely logged for analysis.",
+                      };
+                      if (shouldShow(alertObj)) {
+                        setTopAlert(alertObj);
+                      }
+                    }
+                  });
+                }
+              }
+            }, 2000); // run every 2 seconds
+          } else {
+            console.warn("⚠️ Face models not loaded yet");
+          }
+        }
+      }, 100);
+
+      return () => {
+        clearInterval(checkVideoReady);
+        if (facialAnalysisIntervalRef.current) {
+          clearInterval(facialAnalysisIntervalRef.current);
+        }
+      };
     };
 
-    startCameraOnLoad();
+    startFacialAnalysis();
+
+    return () => {
+      if (facialAnalysisIntervalRef.current) {
+        clearInterval(facialAnalysisIntervalRef.current);
+      }
+    };
   }, []);
 
-
-
-
-  const startWebcam = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: false,
-      });
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-
-        await videoRef.current.play();   // 👈 important
-        setCameraOn(true);
-      }
-    } catch (err) {
-      console.error("Camera error:", err);
+  /**
+   * Check if an alert should be shown (not recently dismissed)
+   */
+  const shouldShow = (alert) => {
+    if (!alert) return false;
+    const last = dismissedAlerts[alert.id];
+    if (last && Date.now() - last < 10000) {
+      // dismissed within last 10 seconds
+      return false;
     }
+    return true;
   };
+
+  // automatically clear top alert after 3 seconds
+  useEffect(() => {
+    if (alertTimerRef.current) {
+      clearTimeout(alertTimerRef.current);
+    }
+    if (topAlert) {
+      alertTimerRef.current = setTimeout(() => {
+        setTopAlert(null);
+      }, 3000);
+    }
+    return () => {
+      if (alertTimerRef.current) clearTimeout(alertTimerRef.current);
+    };
+  }, [topAlert]);
+
+
 
 
 
 
   /* ---------------- SPEECH RECOGNITION ---------------- */
+
+  // handler for closing the top alert bar
+  const dismissTopAlert = (id) => {
+    setDismissedAlerts((prev) => ({ ...prev, [id]: Date.now() }));
+    setTopAlert(null);
+  };
+
   useEffect(() => {
     if ("webkitSpeechRecognition" in window) {
       const recog = new window.webkitSpeechRecognition();
@@ -445,6 +735,11 @@ export default function InterviewSession() {
     // Stop timer
     clearInterval(timerRef.current);
 
+    // Stop facial analysis
+    if (facialAnalysisIntervalRef.current) {
+      clearInterval(facialAnalysisIntervalRef.current);
+    }
+
     // Stop speech recognition
     try {
       recognitionRef.current?.stop();
@@ -463,13 +758,63 @@ export default function InterviewSession() {
       audioContextRef.current.close();
     }
 
-    // Navigate back
-    navigate("/interviewsetup");
+    // Navigate to feedback with metrics
+    navigate("/mock-interview/feedback", {
+      state: {
+        metricsHistory,
+        mode,
+        value,
+      },
+    });
   };
 
   /* ---------------- UI ---------------- */
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white flex justify-center items-center p-8">
+      <AIMonitoringStatus />
+      <TopAlertBar alert={topAlert} onDismiss={dismissTopAlert} />
+
+      {/* Debug panel: show only when ?debug=1 in URL */}
+      {new URLSearchParams(window.location.search).get("debug") === "1" && (
+        <div style={{ position: "fixed", top: 72, right: 16, zIndex: 11000, display: "flex", gap: 8 }}>
+          <button
+            onClick={() => {
+              // force nervous alert for quick testing
+              alertStateRef.current.nervousStart = Date.now() - 6000; // pretend it started 6s ago
+              alertStateRef.current.nervous = false;
+              const alertObj = {
+                id: "nervous",
+                type: "warning",
+                message: "You appear slightly nervous. Please relax and continue confidently.",
+              };
+              setTopAlert(alertObj);
+              console.log("[debug] forced nervous alert");
+            }}
+            style={{ padding: "8px 10px", borderRadius: 8, background: "#f8d7da", border: "1px solid #f5c6cb", color: "#721c24", fontWeight: 600 }}
+          >
+            Simulate Nervous
+          </button>
+
+          <button
+            onClick={() => {
+              // force head-away alert for quick testing
+              alertStateRef.current.headAwayStart = Date.now() - 4000; // pretend it started 4s ago
+              alertStateRef.current.headTurnedAway = false;
+              const alertObj = {
+                id: "head-movement",
+                type: "warning",
+                message: "Please maintain your focus on the interview screen.",
+              };
+              setTopAlert(alertObj);
+              console.log("[debug] forced head-away alert");
+            }}
+            style={{ padding: "8px 10px", borderRadius: 8, background: "#fff4e5", border: "1px solid #ffe0b2", color: "#663c00", fontWeight: 600 }}
+          >
+            Simulate Head Away
+          </button>
+        </div>
+      )}
+      
       <div className="w-full max-w-[90rem] min-h-[85vh] bg-white rounded-2xl shadow-lg border border-purple-100 p-10">
 
         <h2 className="text-2xl font-semibold text-purple-700 mb-1">
@@ -502,8 +847,17 @@ export default function InterviewSession() {
               )}
             </div>
 
-            <div className="h-56 bg-purple-100 border rounded-xl overflow-hidden">
-              <CameraFeed />
+            <div>
+              <p className="text-xs font-semibold text-gray-600 mb-2">Camera Preview</p>
+              <div className="h-56 bg-purple-100 border border-purple-200 rounded-[12px] overflow-hidden" style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                <div className="relative w-full h-full">
+                  <CameraFeed videoRef={videoRef} />
+                  <canvas
+                    ref={canvasRef}
+                    className="absolute top-0 left-0 w-full h-full pointer-events-none"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 

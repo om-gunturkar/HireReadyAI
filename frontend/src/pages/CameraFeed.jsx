@@ -1,23 +1,24 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
-export default function CameraFeed() {
-    const videoRef = useRef(null);
-
+export default function CameraFeed({ videoRef }) {
     useEffect(() => {
+        if (!videoRef?.current) return;
+
         let stream;
 
         const startCamera = async () => {
             try {
                 stream = await navigator.mediaDevices.getUserMedia({
-                    video: true,
+                    video: { width: { ideal: 640 }, height: { ideal: 480 } },
                     audio: false,
                 });
 
                 if (videoRef.current) {
                     videoRef.current.srcObject = stream;
+                    console.log("✅ Camera feed started");
                 }
             } catch (err) {
-                console.error("Camera error:", err);
+                console.error("❌ Camera error:", err);
             }
         };
 
@@ -29,7 +30,7 @@ export default function CameraFeed() {
                 stream.getTracks().forEach(track => track.stop());
             }
         };
-    }, []);
+    }, [videoRef]);
 
     return (
         <video

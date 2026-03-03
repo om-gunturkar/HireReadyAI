@@ -6,6 +6,8 @@ const connectDB = require("./src/config/db");
 const resumeRoutes = require("./src/routes/resume");
 const interviewRoutes = require("./src/routes/interviewRoutes");
 const authRoutes = require("./src/routes/authRoutes");
+const emotionRoutes = require("./src/routes/emotionRoutes");
+
 
 const app = express();
 
@@ -25,6 +27,8 @@ app.get("/test", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/resume", resumeRoutes);
 app.use("/api/interview", interviewRoutes);
+app.use("/api/emotion", emotionRoutes);  // new emotion logging endpoint
+
 
 // Global Error Handler (Good Practice)
 app.use((err, req, res, next) => {
