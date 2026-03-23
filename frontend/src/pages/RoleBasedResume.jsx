@@ -149,7 +149,9 @@ export default function RoleBasedResume() {
       <h2 className="font-bold mt-3">Experience</h2>
       <ul className="list-disc ml-5">
         {generated.experience?.map((e, i) => (
-          <li key={i}>{e}</li>
+          <li key={i} className="mb-2 leading-relaxed">
+  {e}
+</li>
         ))}
       </ul>
 
