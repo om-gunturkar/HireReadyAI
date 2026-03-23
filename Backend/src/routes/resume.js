@@ -1,9 +1,11 @@
 const express = require("express");
 const multer = require("multer");
+
 const {
   saveResume,
   getResume,
-  parseResume
+  parseResume,
+  generateRoleResume   // ✅ added
 } = require("../controllers/resumeController");
 
 const router = express.Router();
@@ -19,5 +21,8 @@ router.get("/get", getResume);
 
 /* Resume Parse */
 router.post("/parse", upload.single("resume"), parseResume);
+
+/* Role-Based Generate (NEW) */
+router.post("/generate-role", generateRoleResume);
 
 module.exports = router;
