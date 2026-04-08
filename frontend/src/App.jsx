@@ -11,6 +11,7 @@ import Resume from "./pages/Resume";
 import ResumeTemplates from "./pages/ResumeTemplates";
 import CreateResume from "./pages/CreateResume";
 import RoleBasedResume from "./pages/RoleBasedResume";
+import ScoreAnalysis from "./pages/ScoreAnalysis";
 
 function App() {
   return (
@@ -34,8 +35,9 @@ function App() {
         {/* Resume Flow */}
         <Route path="/resume-templates" element={<ResumeTemplates />} />
         <Route path="/resume" element={<Resume />} />
-        <Route path="/create-resume" element={<CreateResume/>}/>
-        <Route path="/role-based-resume" element={<RoleBasedResume/>}/>
+        <Route path="/create-resume" element={<CreateResume />} />
+        <Route path="/role-based-resume" element={<RoleBasedResume />} />
+        <Route path="/mock-interview/score" element={<ScoreAnalysis />} />
       </Routes>
     </BrowserRouter>
   );

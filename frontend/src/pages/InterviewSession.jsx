@@ -5,14 +5,8 @@ import Lottie from "lottie-react";
 import { useNavigate } from "react-router-dom";
 import TopAlertBar from "../components/TopAlertBar";
 import AIMonitoringStatus from "../components/AIMonitoringStatus";
-import {
-  loadFaceModels,
-  analyzeFace,
-  calculateConfidenceScore,
-  getTopBarAlert,
-  postEmotion,
-} from "../services/facialAnalysisService"; // postEmotion will send data to backend
-
+import { calculateFinalScore } from "../../../Backend/src/utils/scoreCalculator.js";
+import { loadFaceModels, analyzeFace, calculateConfidenceScore, getTopBarAlert, postEmotion } from "../services/facialAnalysisService";
 
 import robotAnimation from "../assets/robot.json";
 // import robotAnimation from "https://assets2.lottiefiles.com/packages/lf20_2ks3pjua.json";
@@ -36,6 +30,7 @@ export default function InterviewSession() {
   const [finalTranscript, setFinalTranscript] = useState("");
   const [interimTranscript, setInterimTranscript] = useState("");
   const [count, setCount] = useState(1);
+  const countRef = useRef(count);
   const [timeLeft, setTimeLeft] = useState(15);
   const [askedQuestions, setAskedQuestions] = useState([]);
   const isExtendingRef = useRef(false);
@@ -47,8 +42,8 @@ export default function InterviewSession() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null); // used to draw bounding box
   const [cameraOn, setCameraOn] = useState(false);
-
-  // Facial Analysis State
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [completionTime, setCompletionTime] = useState(5);
   const [currentMetrics, setCurrentMetrics] = useState(null);
   const [metricsHistory, setMetricsHistory] = useState([]);
   const [topAlert, setTopAlert] = useState(null); // {id,type,message}
@@ -56,9 +51,10 @@ export default function InterviewSession() {
   const [dismissedAlerts, setDismissedAlerts] = useState({}); // id -> timestamp
   const facialAnalysisIntervalRef = useRef(null);
   const modelLoadedRef = useRef(false);
-  const lastHeadPosRef = useRef("forward"); // remembers last known head orientation
+  const lastHeadPosRef = useRef("forward");
+  const isProcessingRef = useRef(false);
+  const selectedVoiceRef = useRef(null);
 
-  // alert state tracker (ref so mutations don't trigger renders)
   const alertStateRef = useRef({
     faceNotDetected: false,
     faceNotDetectedStart: null,
@@ -69,42 +65,31 @@ export default function InterviewSession() {
     nervousCount: 0, // consecutive nervous samples
     multiplePersons: false,
   });
+
+
   const lastDataAlertRef = useRef(0); // timestamp of last data-sent alert
+  useEffect(() => {
+    countRef.current = count;
+  }, [count]);
+
+  /* Stop speech when leaving Interview page */
 
   useEffect(() => {
-    const loadVoices = () => {
-      window.speechSynthesis.getVoices();
+    return () => {
+      // ✅ Stop voice when component unmounts (page change)
+      window.speechSynthesis.cancel();
+
+      // also stop recognition
+      try {
+        recognitionRef.current?.stop();
+      } catch { }
+
+      // stop timers
+      clearInterval(timerRef.current);
     };
-
-    loadVoices();
-
-    window.speechSynthesis.onvoiceschanged = loadVoices;
-
-    // Load face detection models
-    loadFaceModels().then(() => {
-      modelLoadedRef.current = true;
-      console.log("✅ Face models loaded successfully");
-    });
   }, []);
-
 
   const [voiceLevel, setVoiceLevel] = useState(0);
-
-  useEffect(() => {
-    const synth = window.speechSynthesis;
-
-    const loadVoices = () => {
-      const voices = synth.getVoices();
-      console.log("Available voices:", voices);
-    };
-
-    if (synth.onvoiceschanged !== undefined) {
-      synth.onvoiceschanged = loadVoices;
-    }
-
-    loadVoices();
-  }, []);
-
 
   const recognitionRef = useRef(null);
   const timerRef = useRef(null);
@@ -120,6 +105,20 @@ export default function InterviewSession() {
     if (h < 17) return "Good afternoon";
     return "Good evening";
   };
+
+
+  useEffect(() => {
+    const synth = window.speechSynthesis;
+
+    if (!synth) return;
+
+    // 🔥 Warm-up speech engine (silent utterance)
+    const warmUp = new SpeechSynthesisUtterance("");
+    warmUp.volume = 0;
+
+    synth.speak(warmUp);
+  }, []);
+
 
   //Camera + Facial Analysis
   useEffect(() => {
@@ -195,7 +194,7 @@ export default function InterviewSession() {
                             id: "no-face",
                             type: "warning",
                             message:
-                            "Your face is not clearly visible. Please adjust your position.",
+                              "Your face is not clearly visible. Please adjust your position.",
                           };
                           if (shouldShow(alertObj)) {
                             setTopAlert(alertObj);
@@ -391,7 +390,13 @@ export default function InterviewSession() {
     }
     return true;
   };
-
+  // Face Model
+  useEffect(() => {
+    loadFaceModels().then(() => {
+      modelLoadedRef.current = true;
+      console.log("✅ Face models loaded");
+    });
+  }, []);
   // automatically clear top alert after 3 seconds
   useEffect(() => {
     if (alertTimerRef.current) {
@@ -407,10 +412,74 @@ export default function InterviewSession() {
     };
   }, [topAlert]);
 
+  /* ---------------- Block BACK Button ---------------- */
+
+  useEffect(() => {
+    const handleBack = () => {
+      window.history.pushState(null, "", window.location.href);
+      alert("⚠️ You cannot go back during the interview.");
+    };
+
+    window.history.pushState(null, "", window.location.href);
+    window.addEventListener("popstate", handleBack);
+
+    return () => {
+      window.removeEventListener("popstate", handleBack);
+    };
+  }, []);
+
+  /* ---------------- DETECT WINDOW BLUR ---------------- */
+
+  useEffect(() => {
+    const handleBlur = () => {
+      if (phase === "interview") {
+        setTopAlert({
+          id: "window-blur",
+          type: "warning",
+          message: "⚠️ Focus lost. Please return to the interview.",
+        });
+      }
+    };
+
+    window.addEventListener("blur", handleBlur);
+
+    return () => {
+      window.removeEventListener("blur", handleBlur);
+    };
+  }, [phase]);
 
 
+  // auto terminate
 
+  const violationCountRef = useRef(0);
 
+  const handleViolation = () => {
+    violationCountRef.current += 1;
+
+    if (violationCountRef.current >= 3) {
+      alert("❌ Interview terminated due to repeated violations.");
+      stopInterview();
+    }
+  };
+  /* ---------------- TAB SWITCH ---------------- */
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden && phase === "interview") {
+        setTopAlert({
+          id: "tab-switch",
+          type: "warning",
+          message: "⚠️ Please stay on the interview screen.",
+        });
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [phase]);
 
   /* ---------------- SPEECH RECOGNITION ---------------- */
 
@@ -451,23 +520,6 @@ export default function InterviewSession() {
 
         setInterimTranscript(interimText);
       };
-      /*
-      recog.onend = () => {
-        const fullText = finalTranscript + interimTranscript;
-
-        if (
-          phase === "interview" &&
-          !speakingRef.current &&
-          fullText.trim().length > 3
-        ) {
-          silenceTimerRef.current = setTimeout(() => {
-            nextQuestion();
-          }, 3000); // waits 3 seconds
-        }
-      };
-      */
-
-
       recognitionRef.current = recog;
     }
   }, [phase]);
@@ -478,26 +530,17 @@ export default function InterviewSession() {
 
     if (!synth) return;
 
-    synth.cancel(); // clear previous queue
+    // 🔥 Cancel immediately
+    synth.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
+
     utterance.lang = "en-US";
+    utterance.rate = 0.95;
+    utterance.pitch = 1;
 
-    const voices = synth.getVoices();
-
-    if (voices.length > 0) {
-      const female =
-        voices.find(v =>
-          v.name.includes("Zira") ||
-          v.name.includes("Samantha") ||
-          v.name.toLowerCase().includes("female")
-        ) || voices[0];
-
-      utterance.voice = female;
-    }
-
-    utterance.rate = 1;
-    utterance.pitch = 1.1;
+    // 🔥 PRIORITY HACK (important)
+    utterance.volume = 1;
 
     utterance.onstart = () => {
       setActiveSpeaker("system");
@@ -510,6 +553,19 @@ export default function InterviewSession() {
 
     synth.speak(utterance);
   };
+
+
+  useEffect(() => {
+    const synth = window.speechSynthesis;
+
+    if (!synth) return;
+
+    // 🔥 Warm-up speech engine
+    const warmUp = new SpeechSynthesisUtterance("");
+    warmUp.volume = 0;
+
+    synth.speak(warmUp);
+  }, []);
 
   /* ---------------- INITIAL GREETING ---------------- */
   useEffect(() => {
@@ -524,14 +580,16 @@ export default function InterviewSession() {
       const fullText = `${greeting}. ${welcome}`;
       setQuestion(fullText);
 
-      speak(greeting, () => {
-        speak(welcome, () => {
-          setPhase("level");
+      // 🔥 Small delay = instant speech feel
+      setTimeout(() => {
+        speak(greeting, () => {
+          speak(welcome, () => {
+            setPhase("level");
+          });
         });
-      });
+      }, 100); // ⚡ key fix
     }
   }, [phase]);
-
   /* ---------------- LEVEL SELECTION ---------------- */
   const chooseLevel = async (lvl) => {
     setLevel(lvl);
@@ -542,7 +600,11 @@ export default function InterviewSession() {
 
     speak(msg, () => {
       setPhase("interview");
-      getQuestion("", 1, lvl); // just call next
+
+      // ✅ small delay ensures ref is updated
+      setTimeout(() => {
+        getQuestion("", 1);
+      }, 100);
     });
   };
 
@@ -602,6 +664,32 @@ export default function InterviewSession() {
     clearInterval(timerRef.current);
 
     try {
+      // ✅ DEBUG LOG (VERY IMPORTANT)
+      console.log("🚀 Sending Request:", {
+        mode,
+        value,
+        level: levelRef.current,
+      });
+
+      // ✅ VALIDATION (Fix 2)
+      if (!mode || !value || !levelRef.current) {
+        console.error("❌ Missing required fields:", {
+          mode,
+          value,
+          level: levelRef.current,
+        });
+
+        // 🔥 fallback (IMPORTANT)
+        if (!levelRef.current && level) {
+          levelRef.current = level;
+        }
+
+        if (!mode || !value || !levelRef.current) {
+          setQuestion("⚠️ Interview setup missing. Please restart.");
+          return;
+        }
+      }
+
       const requestBody = {
         type: mode,
         role: value,
@@ -622,6 +710,14 @@ export default function InterviewSession() {
         body: JSON.stringify(requestBody),
       });
 
+      // ✅ HANDLE 400 / API ERRORS (VERY IMPORTANT)
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error("❌ API Error:", errText);
+
+        setQuestion("⚠️ Failed to fetch question. Check backend.");
+        return;
+      }
 
       const data = await res.json();
 
@@ -638,20 +734,22 @@ export default function InterviewSession() {
       setAskedQuestions((prev) => [...prev, cleanQ]);
 
       speak(displayQ, () => {
-        setActiveSpeaker("user");   // user turn starts
+        setActiveSpeaker("user");
         recognitionRef.current?.start();
         startAudioAnalysis();
-        startTimer();
       });
 
+      // ✅ START TIMER IMMEDIATELY
+      startTimer();
+
     } catch (err) {
-      console.error(err);
+      console.error("❌ Fetch Error:", err);
       setQuestion("Failed to load question.");
     }
   };
-
   /* ---------------- TIMER ---------------- */
   const startTimer = () => {
+    clearInterval(timerRef.current); // ✅ prevents duplicate timers
     setTimeLeft(15);
     isExtendingRef.current = false;
     lastSpeechTimeRef.current = Date.now();
@@ -675,7 +773,15 @@ export default function InterviewSession() {
 
             // If NOT speaking → go next question
             clearInterval(timerRef.current);
-            nextQuestion();
+
+            if (countRef.current >= MAX_QUESTIONS) {
+              stopInterview();   // ✅ go to score page
+            } else {
+              if (!isProcessingRef.current) {
+                nextQuestion();
+              }
+            }
+
             return 0;
           }
 
@@ -688,8 +794,16 @@ export default function InterviewSession() {
           // If silence detected during extension → move next
           if (silenceDuration > 3) {
             clearInterval(timerRef.current);
-            nextQuestion();
-            return prev;
+
+            if (countRef.current >= MAX_QUESTIONS) {
+              stopInterview();
+            } else {
+              if (!isProcessingRef.current) {
+                nextQuestion();
+              }
+            }
+
+            return 0;
           }
 
           return prev - 1;
@@ -711,222 +825,370 @@ export default function InterviewSession() {
 
   /* ---------------- NEXT QUESTION ---------------- */
   const nextQuestion = async () => {
+    if (isProcessingRef.current) return; // 🚫 prevent double call
+    isProcessingRef.current = true;
+
     stopAll();
 
-    if (count >= MAX_QUESTIONS) {
-      speak("Your interview is completed. Thank you for your time.");
+    if (countRef.current >= MAX_QUESTIONS) {
+      speak("Your interview is completed.");
+
+      setTimeout(() => {
+        stopInterview();
+      }, 1500);
+
+      isProcessingRef.current = false;
       return;
     }
 
     setCount((prev) => {
       const newCount = prev + 1;
+
       getQuestion(finalTranscript + interimTranscript, newCount);
+
       return newCount;
     });
+
+    // small delay to release lock
+    setTimeout(() => {
+      isProcessingRef.current = false;
+    }, 500);
   };
 
   /* ---------------- END BUTTON ---------------- */
   const endAndProceed = () => {
-    stopAll();
-    setTimeLeft(15);
-    nextQuestion();
+    clearInterval(timerRef.current); // only stop timer
+    if (!isProcessingRef.current) {
+      nextQuestion();
+    }
   };
+  useEffect(() => {
+    if (!isCompleted) return;
+
+    const audio = new Audio("/success.mp3");
+    audio.play().catch(() => { });
+
+    const timer = setInterval(() => {
+      setCompletionTime((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+
+          const scoreData = calculateFinalScore({
+            questionWeights: metricsHistory.map(m => m.difficulty || 0.7),
+            answerScores: metricsHistory.map(m => m.correctness || 0.6),
+
+            fluency: 0.6,
+            asrAccuracy: 0.7,
+            grammarComm: 0.65,
+
+            prosody: 0.5,
+            emotion: 0.6,
+          });
+
+          navigate("/mock-interview/score", {
+            state: {
+              scoreData,
+              metricsHistory,
+              mode,
+              value,
+            },
+          });
+
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isCompleted]);
   const stopInterview = () => {
-    // Stop timer
     clearInterval(timerRef.current);
 
-    // Stop facial analysis
     if (facialAnalysisIntervalRef.current) {
       clearInterval(facialAnalysisIntervalRef.current);
     }
 
-    // Stop speech recognition
     try {
       recognitionRef.current?.stop();
     } catch { }
 
-    // Stop speech synthesis
     window.speechSynthesis.cancel();
 
-    // Stop camera
     if (videoRef.current?.srcObject) {
       videoRef.current.srcObject.getTracks().forEach(track => track.stop());
     }
 
-    // Stop audio context
     if (audioContextRef.current) {
       audioContextRef.current.close();
     }
 
-    // Navigate to feedback with metrics
-    navigate("/mock-interview/feedback", {
-      state: {
-        metricsHistory,
-        mode,
-        value,
-      },
-    });
+    // ✅ SHOW OVERLAY ONLY
+    setIsCompleted(true);
   };
+  const calculateFinalScore = (metricsHistory = []) => {
+    // 🚫 No data → return 0
+    if (!Array.isArray(metricsHistory) || metricsHistory.length === 0) {
+      return {
+        totalScore: 0,
+        technicalScore: 0,
+        communicationScore: 0,
+        confidenceScore: 0,
+      };
+    }
 
+    let confidenceSum = 0;
+    let emotionSum = 0;
+    let attentionSum = 0;
+    let validAnswers = 0;
+
+    metricsHistory.forEach((m) => {
+      // ✅ Only count if actual answer exists
+      if (!m || m.skipped) return;
+
+      validAnswers++;
+
+      // -----------------------------
+      // CONFIDENCE (F = δ1P + δ2E)
+      // -----------------------------
+      const confidence = m.confidence ?? 0;
+      confidenceSum += confidence;
+
+      // -----------------------------
+      // EMOTION (part of confidence / communication)
+      // -----------------------------
+      if (m.emotion === "happy") emotionSum += 1;
+      else if (m.emotion === "neutral") emotionSum += 0.7;
+      else emotionSum += 0.4;
+
+      // -----------------------------
+      // ATTENTION (technical proxy)
+      // -----------------------------
+      if (m.headPosition === "forward") attentionSum += 1;
+    });
+
+    // 🚫 If user didn't answer anything
+    if (validAnswers === 0) {
+      return {
+        totalScore: 0,
+        technicalScore: 0,
+        communicationScore: 0,
+        confidenceScore: 0,
+      };
+    }
+
+    const n = validAnswers;
+
+    // -----------------------------
+    // NORMALIZED SCORES (0–1)
+    // -----------------------------
+    const F = (confidenceSum / n + emotionSum / n) / 2; // confidence + emotion
+    const C = emotionSum / n; // communication proxy
+    const T = attentionSum / n; // technical proxy
+
+    // -----------------------------
+    // FINAL WEIGHTED SCORE (Q)
+    // -----------------------------
+    const wT = 0.4;
+    const wC = 0.3;
+    const wF = 0.3;
+
+    const Q = wT * T + wC * C + wF * F;
+
+    // -----------------------------
+    // SCALE TO 100
+    // -----------------------------
+    return {
+      totalScore: Math.round(Q * 100),
+      technicalScore: Math.round(T * 100),
+      communicationScore: Math.round(C * 100),
+      confidenceScore: Math.round(F * 100),
+    };
+  };
   /* ---------------- UI ---------------- */
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white flex justify-center items-center p-8">
-      <AIMonitoringStatus />
-      <TopAlertBar alert={topAlert} onDismiss={dismissTopAlert} />
+    <>
+      {/* ✅ OVERLAY */}
+      {isCompleted && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-md"></div>
 
-      {/* Debug panel: show only when ?debug=1 in URL */}
-      {new URLSearchParams(window.location.search).get("debug") === "1" && (
-        <div style={{ position: "fixed", top: 72, right: 16, zIndex: 11000, display: "flex", gap: 8 }}>
-          <button
-            onClick={() => {
-              // force nervous alert for quick testing
-              alertStateRef.current.nervousStart = Date.now() - 6000; // pretend it started 6s ago
-              alertStateRef.current.nervous = false;
-              const alertObj = {
-                id: "nervous",
-                type: "warning",
-                message: "You appear slightly nervous. Please relax and continue confidently.",
-              };
-              setTopAlert(alertObj);
-              console.log("[debug] forced nervous alert");
-            }}
-            style={{ padding: "8px 10px", borderRadius: 8, background: "#f8d7da", border: "1px solid #f5c6cb", color: "#721c24", fontWeight: 600 }}
-          >
-            Simulate Nervous
-          </button>
+          <div className="relative bg-white rounded-2xl shadow-2xl p-12 w-[500px] text-center animate-fadeIn">
+            <h1 className="text-3xl font-bold text-purple-700 mb-4 animate-bounce">
+              🎉 Thank You for Your Time!
+            </h1>
 
-          <button
-            onClick={() => {
-              // force head-away alert for quick testing
-              alertStateRef.current.headAwayStart = Date.now() - 4000; // pretend it started 4s ago
-              alertStateRef.current.headTurnedAway = false;
-              const alertObj = {
-                id: "head-movement",
-                type: "warning",
-                message: "Please maintain your focus on the interview screen.",
-              };
-              setTopAlert(alertObj);
-              console.log("[debug] forced head-away alert");
-            }}
-            style={{ padding: "8px 10px", borderRadius: 8, background: "#fff4e5", border: "1px solid #ffe0b2", color: "#663c00", fontWeight: 600 }}
-          >
-            Simulate Head Away
-          </button>
+            <p className="text-gray-600 mb-8">
+              Your interview has been successfully completed.
+            </p>
+
+            {/* ✅ PERFECT CIRCLE */}
+            <div className="flex justify-center mb-6">
+              <div className="relative w-32 h-32">
+                <svg
+                  className="w-full h-full transform -rotate-90"
+                  viewBox="0 0 120 120"
+                >
+                  <circle
+                    cx="60"
+                    cy="60"
+                    r="50"
+                    stroke="#e5e7eb"
+                    strokeWidth="10"
+                    fill="none"
+                  />
+
+                  <circle
+                    cx="60"
+                    cy="60"
+                    r="50"
+                    stroke="#7c3aed"
+                    strokeWidth="10"
+                    fill="none"
+                    strokeDasharray={2 * Math.PI * 50}
+                    strokeDashoffset={(2 * Math.PI * 50 * (5 - completionTime)) / 5}
+                    strokeLinecap="round"
+                    style={{ transition: "stroke-dashoffset 1s linear" }}
+                  />
+                </svg>
+
+                <div className="absolute inset-0 flex items-center justify-center text-xl font-bold text-purple-700">
+                  {completionTime}s
+                </div>
+              </div>
+            </div>
+
+            <p className="text-gray-500 animate-pulse">
+              Redirecting to Score Page...
+            </p>
+          </div>
         </div>
       )}
-      
-      <div className="w-full max-w-[90rem] min-h-[85vh] bg-white rounded-2xl shadow-lg border border-purple-100 p-10">
 
-        <h2 className="text-2xl font-semibold text-purple-700 mb-1">
-          🎯 Mock Interview
-        </h2>
-        <p className="text-sm text-gray-500 mb-6">
-          Mode: {mode} | Topic: {value}
-        </p>
+      {/* ✅ MAIN PAGE */}
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white flex justify-center items-center p-8">
 
-        <div className="grid grid-cols-12 gap-8 h-full">
+        <AIMonitoringStatus />
+        <TopAlertBar alert={topAlert} onDismiss={dismissTopAlert} />
 
-          {/* LEFT */}
-          <div className="col-span-4 flex flex-col gap-6">
-            <div
-              className={`h-64 bg-purple-100 border rounded-xl flex items-center justify-center ${activeSpeaker === "system"
-                ? "border-purple-400 shadow-[0_0_12px_rgba(168,85,247,0.35)]"
-                : "border-purple-200"
-                }`}
-            >
-              {robotAnimation && (
-                <Lottie
-                  animationData={robotAnimation}
-                  loop={activeSpeaker === "system"}
-                  autoplay={activeSpeaker === "system"}
-                  style={{
-                    width: 220,
-                    height: 220,
-                  }}
-                />
+        <div className="w-full max-w-[90rem] min-h-[85vh] bg-white rounded-2xl shadow-lg border border-purple-100 p-10">
+
+          <h2 className="text-2xl font-semibold text-purple-700 mb-1">
+            🎯 Mock Interview
+          </h2>
+
+          <p className="text-sm text-gray-500 mb-6">
+            Mode: {mode} | Topic: {value}
+          </p>
+
+          <div className="grid grid-cols-12 gap-8 h-full">
+
+            {/* LEFT */}
+            <div className="col-span-4 flex flex-col gap-6">
+              <div className="h-64 bg-purple-100 border rounded-xl flex items-center justify-center">
+                {robotAnimation && (
+                  <Lottie
+                    animationData={robotAnimation}
+                    loop={activeSpeaker === "system"}
+                    autoplay={activeSpeaker === "system"}
+                    style={{ width: 220, height: 220 }}
+                  />
+                )}
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold text-gray-600 mb-2">
+                  Camera Preview
+                </p>
+                <div className="h-56 bg-purple-100 border border-purple-200 rounded-[12px] overflow-hidden">
+                  <div className="relative w-full h-full">
+                    <CameraFeed videoRef={videoRef} />
+                    <canvas
+                      ref={canvasRef}
+                      className="absolute top-0 left-0 w-full h-full pointer-events-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* RIGHT */}
+            <div className="col-span-8 bg-purple-50 border border-purple-200 rounded-xl p-8 flex flex-col justify-between">
+
+              <div>
+                <span className="text-sm font-semibold">
+                  {timeLeft > 0
+                    ? `⏱ 0:${timeLeft.toString().padStart(2, "0")}`
+                    : `⏱ +${Math.abs(timeLeft).toString().padStart(2, "0")}`}
+                </span>
+
+                <p className="text-lg font-medium text-purple-900 mt-4">
+                  {question}
+                </p>
+                {/* ✅ LEVEL SELECTION UI */}
+                {phase === "level" && (
+                  <div className="flex justify-center gap-6 mt-8">
+
+                    <button
+                      onClick={() => chooseLevel("Easy")}
+                      className="px-6 py-2 bg-green-200 text-green-800 rounded-lg font-semibold hover:scale-105 transition"
+                    >
+                      Easy
+                    </button>
+
+                    <button
+                      onClick={() => chooseLevel("Moderate")}
+                      className="px-6 py-2 bg-yellow-200 text-yellow-800 rounded-lg font-semibold hover:scale-105 transition"
+                    >
+                      Moderate
+                    </button>
+
+                    <button
+                      onClick={() => chooseLevel("Hard")}
+                      className="px-6 py-2 bg-red-200 text-red-800 rounded-lg font-semibold hover:scale-105 transition"
+                    >
+                      Hard
+                    </button>
+
+                  </div>
+                )}
+              </div>
+
+              {phase === "interview" && (
+                <>
+                  <textarea
+                    rows="7"
+                    className="w-full bg-white border border-purple-300 rounded-lg p-4"
+                    value={finalTranscript + interimTranscript}
+                    onChange={(e) => setFinalTranscript(e.target.value)}
+                  />
+
+                  <div className="flex justify-between items-center mt-4 gap-6">
+                    <button
+                      onClick={stopInterview}
+                      className="px-6 py-2 bg-red-600 text-white rounded-lg"
+                    >
+                      Stop Interview
+                    </button>
+
+                    <button
+                      onClick={count >= MAX_QUESTIONS ? stopInterview : endAndProceed}
+                      className="px-6 py-2 bg-green-600 text-white rounded-lg"
+                    >
+                      {count >= MAX_QUESTIONS ? "Submit" : "Next Question"}
+                    </button>
+
+                    <div className="text-sm text-purple-600">
+                      {Math.min(count, MAX_QUESTIONS)} / {MAX_QUESTIONS}
+                    </div>
+                  </div>
+                </>
               )}
             </div>
 
-            <div>
-              <p className="text-xs font-semibold text-gray-600 mb-2">Camera Preview</p>
-              <div className="h-56 bg-purple-100 border border-purple-200 rounded-[12px] overflow-hidden" style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
-                <div className="relative w-full h-full">
-                  <CameraFeed videoRef={videoRef} />
-                  <canvas
-                    ref={canvasRef}
-                    className="absolute top-0 left-0 w-full h-full pointer-events-none"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* RIGHT */}
-          <div className="col-span-8 bg-purple-50 border border-purple-200 rounded-xl p-8 flex flex-col justify-between">
-
-            <div>
-              <span
-                className={`text-sm font-semibold ${timeLeft > 10
-                  ? "text-purple-600"
-                  : timeLeft > 0
-                    ? "text-red-600 animate-pulse"
-                    : "text-green-600"
-                  }`}
-              >
-                {timeLeft > 0
-                  ? `⏱ 0:${timeLeft.toString().padStart(2, "0")}`
-                  : `⏱ +${Math.abs(timeLeft).toString().padStart(2, "0")}`}
-              </span>
-
-
-
-              <p className="text-lg font-medium text-purple-900 leading-relaxed">
-                {question}
-              </p>
-            </div>
-
-            {phase === "level" && (
-              <div className="flex justify-center gap-6">
-                <button onClick={() => chooseLevel("easy")} className="px-6 py-2 bg-green-100 text-green-700 rounded-lg">Easy</button>
-                <button onClick={() => chooseLevel("moderate")} className="px-6 py-2 bg-yellow-100 text-yellow-700 rounded-lg">Moderate</button>
-                <button onClick={() => chooseLevel("hard")} className="px-6 py-2 bg-red-100 text-red-700 rounded-lg">Hard</button>
-              </div>
-            )}
-
-            {phase === "interview" && (
-              <>
-                <textarea
-                  rows="7"
-                  className="w-full bg-white border border-purple-300 rounded-lg p-4 focus:outline-none focus:ring-2 focus:ring-purple-400"
-                  placeholder="User spoken answer will be converted to text here..."
-                  value={finalTranscript + interimTranscript}
-                  onChange={(e) => setFinalTranscript(e.target.value)}
-                />
-
-                <div className="flex justify-between items-center mt-4 gap-6">
-                  <button
-                    onClick={stopInterview}
-                    className="px-6 py-2 bg-[#9c142f] text-white rounded-lg hover:bg-red-600"
-                  >
-                    Stop Interview
-                  </button>
-
-                  <button
-                    onClick={endAndProceed}
-                    className="px-6 py-2 bg-[#207018] text-white rounded-lg hover:bg-green-600"
-                  >
-                    Next Question
-                  </button>
-
-                  <div className="text-sm text-purple-600">
-                    {count} / {MAX_QUESTIONS}
-                  </div>
-                </div>
-              </>
-            )}
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
