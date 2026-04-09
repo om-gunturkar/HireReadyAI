@@ -17,6 +17,20 @@ const average = (list) => {
   return Math.round(sum / list.length);
 };
 
+const pickRandomFollowUpTargets = (maxQuestions = 10, totalTargets = 2) => {
+  const available = [];
+  for (let questionNumber = 2; questionNumber <= maxQuestions; questionNumber += 1) {
+    available.push(questionNumber);
+  }
+
+  for (let i = available.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [available[i], available[j]] = [available[j], available[i]];
+  }
+
+  return available.slice(0, totalTargets).sort((a, b) => a - b);
+};
+
 const buildSummary = (session, emotions) => {
   const answers = session.answers || [];
 
@@ -116,6 +130,7 @@ exports.startSession = async (req, res) => {
       mode,
       topic,
       level,
+      followUpTargets: pickRandomFollowUpTargets(10, 2),
     });
 
     return res.status(201).json({

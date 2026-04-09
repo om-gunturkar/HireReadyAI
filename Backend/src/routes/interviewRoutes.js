@@ -24,11 +24,65 @@ const python = require("../questions/language/python");
 
 // Groq service for resume-based interviews
 const groqService = require("../services/groqService");
+const InterviewSession = require("../models/InterviewSession");
 
 // Helper function to get random question
 function getRandomQuestion(questionsArray) {
   const randomIndex = Math.floor(Math.random() * questionsArray.length);
   return questionsArray[randomIndex];
+}
+
+async function maybeGenerateFollowUp({
+  sessionId,
+  type,
+  role,
+  level,
+  previousQuestion,
+  previousAnswer,
+  resumeText,
+}) {
+  if (!sessionId || !previousQuestion || !previousAnswer?.trim()) {
+    return null;
+  }
+
+  const session = await InterviewSession.findOne({ sessionId });
+  if (!session) {
+    return null;
+  }
+
+  const nextQuestionNumber = (session.questionCount || 0) + 1;
+  const followUpTargets = Array.isArray(session.followUpTargets) ? session.followUpTargets : [];
+
+  if ((session.followUpCount || 0) >= 2) {
+    return null;
+  }
+
+  if (!followUpTargets.includes(nextQuestionNumber)) {
+    return null;
+  }
+
+  const result = await groqService.generateFollowUpQuestion({
+    mode: type,
+    role,
+    level,
+    previousQuestion,
+    previousAnswer,
+    resumeText,
+  });
+
+  if (!result?.question || result.question === "AI generation failed.") {
+    return null;
+  }
+
+  session.followUpCount = (session.followUpCount || 0) + 1;
+  session.questionCount = nextQuestionNumber;
+  await session.save();
+
+  return {
+    question: result.question,
+    isFollowUp: true,
+    followUpCount: session.followUpCount,
+  };
 }
 
 router.post("/session/start", startSession);
@@ -38,7 +92,7 @@ router.get("/session/:sessionId/report", getSessionReport);
 
 router.post("/next", async (req, res) => {
   console.log("Incoming body:", req.body);
-  let { type, role, level } = req.body;
+  let { type, role, level, sessionId, previousQuestion, previousAnswer } = req.body;
 
   // Normalize inputs
   type = type?.toLowerCase().trim();
@@ -58,6 +112,19 @@ router.post("/next", async (req, res) => {
 
   // ================= ROLE BASED =================
   if (type === "role") {
+    const followUp = await maybeGenerateFollowUp({
+      sessionId,
+      type,
+      role,
+      level,
+      previousQuestion,
+      previousAnswer,
+    });
+
+    if (followUp) {
+      return res.json(followUp);
+    }
+
     switch (role) {
       case "Frontend Developer":
         selectedQuestions = frontend[level];
@@ -81,6 +148,19 @@ router.post("/next", async (req, res) => {
 
   // ================= LANGUAGE BASED =================
   else if (type === "language") {
+    const followUp = await maybeGenerateFollowUp({
+      sessionId,
+      type,
+      role,
+      level,
+      previousQuestion,
+      previousAnswer,
+    });
+
+    if (followUp) {
+      return res.json(followUp);
+    }
+
     switch (role) {
       case "C/C++":
         selectedQuestions = cpp[level];
@@ -102,19 +182,38 @@ router.post("/next", async (req, res) => {
   // ================= RESUME BASED =================
   else if (type === "resume") {
     // For resume-based interviews, we need resumeText from the request body
-    const { resumeText, previousAnswer } = req.body;
+    const { resumeText } = req.body;
 
     if (!resumeText) {
       return res.status(400).json({ error: "Resume text is required for resume-based interview" });
     }
 
-    // Initialize or update the groq service with resume context
-    groqService.startInterview(resumeText, level);
+    const followUp = await maybeGenerateFollowUp({
+      sessionId,
+      type,
+      role,
+      level,
+      previousQuestion,
+      previousAnswer,
+      resumeText,
+    });
+
+    if (followUp) {
+      return res.json(followUp);
+    }
 
     // Generate question using Groq (resume-based)
     try {
-      const result = await groqService.generateNextQuestion(previousAnswer);
-      return res.json(result);
+      const result = await groqService.generateResumeQuestion(resumeText, level);
+
+      if (sessionId) {
+        await InterviewSession.findOneAndUpdate(
+          { sessionId },
+          { $inc: { questionCount: 1 } }
+        );
+      }
+
+      return res.json({ ...result, isFollowUp: false });
     } catch (err) {
       console.error("Groq service error:", err);
       return res.status(500).json({ error: "Failed to generate question" });
@@ -127,7 +226,14 @@ router.post("/next", async (req, res) => {
 
   const question = getRandomQuestion(selectedQuestions);
 
-  return res.json({ question });
+  if (sessionId) {
+    await InterviewSession.findOneAndUpdate(
+      { sessionId },
+      { $inc: { questionCount: 1 } }
+    );
+  }
+
+  return res.json({ question, isFollowUp: false });
 });
 
 module.exports = router;

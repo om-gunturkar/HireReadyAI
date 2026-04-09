@@ -707,14 +707,20 @@ export default function InterviewSession() {
         type: mode,
         role: value,
         level: levelRef.current,
+        sessionId,
       };
+
+      if (answerText) {
+        requestBody.previousAnswer = answerText;
+      }
+
+      if (rawQuestion) {
+        requestBody.previousQuestion = rawQuestion;
+      }
 
       // Add resumeText for resume-based interviews
       if (mode === "resume") {
         requestBody.resumeText = resumeText;
-        if (answerText) {
-          requestBody.previousAnswer = answerText;
-        }
       }
 
       const res = await fetch("http://localhost:5000/api/interview/next", {

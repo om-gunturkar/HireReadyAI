@@ -1,6 +1,10 @@
 const Resume = require("../models/Resume");
 const pdfParse = require("pdf-parse");
-const fetch = require("node-fetch");
+const Groq = require("groq-sdk");
+
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
 
 const SECTION_ALIASES = {
   summary: ["summary", "professional summary", "profile", "objective", "career objective"],
@@ -305,39 +309,138 @@ const buildFallbackResumeData = (role, resumeText) => {
   };
 };
 
-const enhanceProjectsForRole = async (role, fallbackData) => {
-  if (!process.env.OPENROUTER_API_KEY || !fallbackData.projects?.length) {
-    return fallbackData.projects || [];
+const buildRoleSeedProfile = (fallbackData) => ({
+  candidate: {
+    name: fallbackData.extractedData?.name || "Your Name",
+    email: fallbackData.extractedData?.email || "",
+    phone: fallbackData.extractedData?.phone || "",
+    linkedin: fallbackData.extractedData?.linkedin || "",
+    github: fallbackData.extractedData?.github || "",
+    portfolio: fallbackData.extractedData?.portfolio || "",
+  },
+  education: (fallbackData.education || []).map((item) => ({
+    degree: item.degree || "",
+    institute: item.institute || "",
+    year: item.year || "",
+    score: item.score || "",
+  })),
+  skills: (fallbackData.skills || []).slice(0, 15),
+  experience: (fallbackData.experience || []).map((item) => ({
+    role: item.role || "",
+    company: item.company || "",
+    duration: item.duration || "",
+  })),
+  projects: (fallbackData.projects || []).map((item) => ({
+    title: item.title || "Project",
+    tech: item.tech || "",
+  })),
+  certifications: (fallbackData.certifications || []).slice(0, 8),
+  achievements: (fallbackData.achievements || []).slice(0, 8),
+});
+
+const parseJsonObject = (value = "") => {
+  const trimmed = String(value || "").trim();
+
+  if (!trimmed) {
+    throw new Error("Empty AI response");
   }
 
-  try {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "openai/gpt-4o-mini",
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "user",
-            content: `
-You are an expert ATS resume writer.
+  const withoutFences = trimmed.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/i, "").trim();
 
-Rewrite only the project descriptions for a ${role} application.
+  try {
+    return JSON.parse(withoutFences);
+  } catch (err) {
+    const firstBrace = withoutFences.indexOf("{");
+    const lastBrace = withoutFences.lastIndexOf("}");
+
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      return JSON.parse(withoutFences.slice(firstBrace, lastBrace + 1));
+    }
+
+    throw err;
+  }
+};
+
+const normalizeComparableText = (value = "") =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/[^\w\s]/g, "")
+    .trim();
+
+const projectsLookUnchanged = (originalProjects = [], updatedProjects = []) => {
+  if (!originalProjects.length || !updatedProjects.length) {
+    return true;
+  }
+
+  return originalProjects.every((project, index) => {
+    const originalPoints = normalizeComparableText(project?.points || "");
+    const updatedPoints = normalizeComparableText(updatedProjects[index]?.points || "");
+    return !updatedPoints || originalPoints === updatedPoints;
+  });
+};
+
+const summaryLooksUnchanged = (originalSummary = "", updatedSummary = "") =>
+  normalizeComparableText(originalSummary) === normalizeComparableText(updatedSummary);
+
+const createRoleTargetedSummaryFallback = (role, fallbackData) => {
+  const skills = (fallbackData.skills || []).slice(0, 5).join(", ");
+  const experienceRoles = (fallbackData.experience || [])
+    .map((item) => item.role)
+    .filter(Boolean)
+    .slice(0, 2)
+    .join(" and ");
+
+  if (skills && experienceRoles) {
+    return `Role-focused candidate targeting ${role} opportunities with hands-on experience in ${experienceRoles} and practical knowledge of ${skills}. Prepared to contribute with strong fundamentals, project execution, and technology aligned to ${role}.`;
+  }
+
+  if (skills) {
+    return `Role-focused candidate targeting ${role} opportunities with practical knowledge of ${skills}. Prepared to contribute with strong fundamentals, project execution, and technology aligned to ${role}.`;
+  }
+
+  return `Role-focused candidate targeting ${role} opportunities with practical project experience and foundational knowledge relevant to ${role}. Prepared to contribute with strong fundamentals and consistent execution.`;
+};
+
+const createRoleTargetedProjectFallbacks = (role, fallbackData) =>
+  (fallbackData.projects || []).map((project) => ({
+    ...project,
+    points: [
+      `Built ${project.title || "this project"} with emphasis on capabilities relevant to ${role}${project.tech ? ` using ${project.tech}` : ""}.`,
+      `Applied practical development, integration, and problem-solving skills to support responsibilities aligned with ${role}.`,
+    ].join("\n"),
+  }));
+
+const callGroqForRoleContent = async (role, fallbackData, extraInstruction = "") => {
+  const seedProfile = buildRoleSeedProfile(fallbackData);
+  const response = await groq.chat.completions.create({
+    model: "llama-3.3-70b-versatile",
+    temperature: 0.9,
+    messages: [
+      {
+        role: "user",
+        content: `
+You are an expert ATS resume writer helping tailor a candidate's resume for a target role.
+
+Generate a fresh role-based resume summary and fresh project descriptions for a ${role} application.
 
 Rules:
-- Keep all basic candidate details unchanged.
+- Use only the extracted basic facts provided below.
+- Do not copy or paraphrase the original summary or original project descriptions.
+- Create a new summary that sounds like it was written for ${role}.
+- Keep the summary concise, professional, ATS-friendly, and clearly role-aligned.
 - Keep each project title exactly the same.
-- Keep the tech stack the same unless it already exists in the source.
-- Improve only the bullet text to better match the target role.
-- Do not invent metrics, tools, dates, or features not supported by the source.
+- Keep the tech stack exactly the same.
+- Write new project bullet points that make each project sound relevant to ${role}.
+- Base the bullets on project title, tech stack, and the candidate's overall skills and experience.
+- Do not invent unsupported metrics, companies, tools, dates, or achievements.
+- Prefer strong, role-aligned phrasing over generic wording.
 - Return valid JSON only.
+${extraInstruction}
 
 JSON shape:
 {
+  "summary": "string",
   "projects": [
     { "title": "string", "tech": "string", "points": "bullet 1\\nbullet 2" }
   ]
@@ -345,33 +448,174 @@ JSON shape:
 
 Target role: ${role}
 
-Projects from the full resume:
-${JSON.stringify(fallbackData.projects, null, 2)}
+Extracted basic candidate profile:
+${JSON.stringify(seedProfile, null, 2)}
+        `.trim(),
+      },
+    ],
+  });
 
-Full parsed resume text:
-${fallbackData.rawText}
+  const aiText = response?.choices?.[0]?.message?.content || "";
+  const parsed = parseJsonObject(aiText);
+
+  const projects = Array.isArray(parsed.projects)
+    ? parsed.projects.map((project, index) => ({
+        title: project?.title || fallbackData.projects[index]?.title || "Project",
+        tech: project?.tech || fallbackData.projects[index]?.tech || "",
+        points: project?.points || fallbackData.projects[index]?.points || "",
+      }))
+    : fallbackData.projects || [];
+
+  return {
+    summary: String(parsed?.summary || fallbackData.summary || "").trim(),
+    projects,
+  };
+};
+
+const rewriteSummaryWithGroq = async (role, fallbackData) => {
+  const seedProfile = buildRoleSeedProfile(fallbackData);
+  const response = await groq.chat.completions.create({
+    model: "llama-3.3-70b-versatile",
+    temperature: 0.9,
+    messages: [
+      {
+        role: "user",
+        content: `
+You are an expert ATS resume writer.
+
+Write a fresh resume summary for a ${role} application using only the extracted basic facts below.
+
+Rules:
+- Do not copy or paraphrase the original resume summary.
+- Keep it truthful to the extracted facts.
+- Make it clearly aligned to ${role}.
+- Keep it concise, professional, and ATS-friendly.
+- Return only the rewritten summary text.
+
+Extracted basic candidate profile:
+${JSON.stringify(seedProfile, null, 2)}
+        `.trim(),
+      },
+    ],
+  });
+
+  return String(
+    response?.choices?.[0]?.message?.content || createRoleTargetedSummaryFallback(role, fallbackData)
+  )
+    .replace(/^["`]+|["`]+$/g, "")
+    .trim();
+};
+
+const rewriteProjectsWithGroq = async (role, fallbackData) => {
+  if (!fallbackData.projects?.length) {
+    return [];
+  }
+
+  const seedProfile = buildRoleSeedProfile(fallbackData);
+
+  const rewrittenProjects = await Promise.all(
+    fallbackData.projects.map(async (project) => {
+      const response = await groq.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
+        temperature: 0.9,
+        messages: [
+          {
+            role: "user",
+            content: `
+You are an expert ATS resume writer.
+
+Write fresh project bullet points for a ${role} application using only the extracted basic facts below.
+
+Rules:
+- Keep the project title exactly the same.
+- Keep the tech stack exactly the same.
+- Do not copy or paraphrase the original project description.
+- Keep the facts truthful to the extracted data.
+- Use stronger ${role}-relevant phrasing.
+- Make the project sound relevant to ${role}.
+- Return valid JSON only in this shape:
+{"points":"bullet 1\\nbullet 2"}
+
+Project title:
+${project.title}
+
+Project tech:
+${project.tech}
+
+Extracted basic candidate profile:
+${JSON.stringify(seedProfile, null, 2)}
             `.trim(),
           },
         ],
-      }),
-    });
+      });
 
-    const data = await response.json();
-    const aiText = data?.choices?.[0]?.message?.content || "";
-    const parsed = JSON.parse(aiText);
+      const parsed = parseJsonObject(response?.choices?.[0]?.message?.content || "");
 
-    if (!Array.isArray(parsed.projects)) {
-      return fallbackData.projects || [];
+      return {
+        ...project,
+        points: String(parsed?.points || project.points || "").trim(),
+      };
+    })
+  );
+
+  return rewrittenProjects;
+};
+
+const enhanceRoleContent = async (role, fallbackData) => {
+  if (!process.env.GROQ_API_KEY) {
+    return {
+      summary: createRoleTargetedSummaryFallback(role, fallbackData),
+      projects: createRoleTargetedProjectFallbacks(role, fallbackData),
+    };
+  }
+
+  try {
+    let result = await callGroqForRoleContent(role, fallbackData);
+
+    let summaryUnchanged = summaryLooksUnchanged(fallbackData.summary, result.summary);
+    const projectsUnchanged = projectsLookUnchanged(fallbackData.projects || [], result.projects || []);
+
+    if (summaryUnchanged || projectsUnchanged) {
+      result = await callGroqForRoleContent(
+        role,
+        fallbackData,
+        `
+Additional requirement:
+- Your previous rewrite was too close to the original.
+- Rewrite again with noticeably different wording while preserving the same facts.
+- The summary must explicitly position the candidate for ${role}.
+- Each project bullet must be rephrased to sound more relevant to ${role}, not copied from the source.
+        `.trim()
+      );
     }
 
-    return parsed.projects.map((project, index) => ({
-      title: project?.title || fallbackData.projects[index]?.title || "Project",
-      tech: project?.tech || fallbackData.projects[index]?.tech || "",
-      points: project?.points || fallbackData.projects[index]?.points || "",
-    }));
+    summaryUnchanged = summaryLooksUnchanged(fallbackData.summary, result.summary);
+    const projectsStillUnchanged = projectsLookUnchanged(fallbackData.projects || [], result.projects || []);
+
+    if (summaryUnchanged) {
+      result.summary = await rewriteSummaryWithGroq(role, fallbackData);
+    }
+
+    if (projectsStillUnchanged) {
+      result.projects = await rewriteProjectsWithGroq(role, fallbackData);
+    }
+
+    if (!result.summary || summaryLooksUnchanged(fallbackData.summary, result.summary)) {
+      result.summary = createRoleTargetedSummaryFallback(role, fallbackData);
+    }
+
+    if (!result.projects?.length || projectsLookUnchanged(fallbackData.projects || [], result.projects || [])) {
+      result.projects = createRoleTargetedProjectFallbacks(role, fallbackData);
+    }
+
+    console.log("Groq role enhancement applied for:", role);
+    return result;
   } catch (err) {
-    console.log("Project enhancement failed, using original projects:", err.message);
-    return fallbackData.projects || [];
+    console.log("Groq role enhancement failed, using fallback content:", err.message);
+    return {
+      summary: createRoleTargetedSummaryFallback(role, fallbackData),
+      projects: createRoleTargetedProjectFallbacks(role, fallbackData),
+    };
   }
 };
 
@@ -453,10 +697,11 @@ exports.generateRoleResume = async (req, res) => {
     }
 
     const fallbackData = buildFallbackResumeData(role, resumeText);
-    const enhancedProjects = await enhanceProjectsForRole(role, fallbackData);
+    const enhancedContent = await enhanceRoleContent(role, fallbackData);
     const finalData = {
       ...fallbackData,
-      projects: enhancedProjects,
+      summary: enhancedContent.summary || fallbackData.summary,
+      projects: enhancedContent.projects,
     };
 
     return res.json({
