@@ -32,7 +32,7 @@ export default function InterviewSession() {
   const [interimTranscript, setInterimTranscript] = useState("");
   const [count, setCount] = useState(1);
   const countRef = useRef(count);
-  const [timeLeft, setTimeLeft] = useState(15);
+  const [timeLeft, setTimeLeft] = useState(90);
   const [askedQuestions, setAskedQuestions] = useState([]);
   const isExtendingRef = useRef(false);
   const lastSpeechTimeRef = useRef(Date.now());
@@ -75,7 +75,17 @@ export default function InterviewSession() {
   }, [count]);
 
   /* Stop speech when leaving Interview page */
+  useEffect(() => {
+    if (phase !== "interview") return;
 
+    const interval = setInterval(() => {
+      try {
+        recognitionRef.current?.start();
+      } catch { }
+    }, 5000); // every 5 sec
+
+    return () => clearInterval(interval);
+  }, [phase]);
   useEffect(() => {
     return () => {
       // ✅ Stop voice when component unmounts (page change)
@@ -493,38 +503,70 @@ export default function InterviewSession() {
   };
 
   useEffect(() => {
-    if ("webkitSpeechRecognition" in window) {
-      const recog = new window.webkitSpeechRecognition();
-      recog.continuous = true;
-      recog.interimResults = true;
-      recog.lang = "en-US";
+    if (!("webkitSpeechRecognition" in window)) return;
 
-      recog.onresult = (event) => {
-        clearTimeout(silenceTimerRef.current);
+    const recog = new window.webkitSpeechRecognition();
 
-        lastSpeechTimeRef.current = Date.now();
+    recog.continuous = true;
+    recog.interimResults = true;
+    recog.lang = "en-US";
 
-        let finalText = "";
-        let interimText = "";
+    let isManuallyStopped = false;
 
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const text = event.results[i][0].transcript;
+    recog.onstart = () => {
+      console.log("🎤 Mic started");
+    };
 
-          if (event.results[i].isFinal) {
-            finalText += text + " ";
-          } else {
-            interimText += text;
+    recog.onresult = (event) => {
+      lastSpeechTimeRef.current = Date.now();
+
+      let finalText = "";
+      let interimText = "";
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const text = event.results[i][0].transcript;
+
+        if (event.results[i].isFinal) {
+          finalText += text + " ";
+        } else {
+          interimText += text;
+        }
+      }
+
+      if (finalText) {
+        setFinalTranscript((prev) => prev + finalText);
+      }
+
+      setInterimTranscript(interimText);
+    };
+
+    // 🔥 KEY FIX (delay restart)
+    recog.onend = () => {
+      console.log("⚠️ Mic stopped");
+
+      if (!isManuallyStopped && phase === "interview") {
+        setTimeout(() => {
+          try {
+            recog.start();
+          } catch (e) {
+            console.log("Restart failed:", e);
           }
-        }
+        }, 500); // ✅ delay is CRITICAL
+      }
+    };
 
-        if (finalText) {
-          setFinalTranscript((prev) => prev + finalText);
-        }
+    recog.onerror = (e) => {
+      console.log("Speech error:", e);
+    };
 
-        setInterimTranscript(interimText);
-      };
-      recognitionRef.current = recog;
-    }
+    recognitionRef.current = recog;
+
+    return () => {
+      isManuallyStopped = true;
+      try {
+        recog.stop();
+      } catch { }
+    };
   }, [phase]);
 
   /* ---------------- TEXT TO SPEECH ---------------- */
@@ -597,6 +639,8 @@ export default function InterviewSession() {
   const chooseLevel = async (lvl) => {
     setLevel(lvl);
     levelRef.current = lvl;
+
+
     try {
       const session = await startInterviewSession({
         mode,
@@ -720,6 +764,7 @@ export default function InterviewSession() {
 
       // Add resumeText for resume-based interviews
       if (mode === "resume") {
+        console.log("📄 Resume Text:", resumeText);
         requestBody.resumeText = resumeText;
       }
 
@@ -754,7 +799,13 @@ export default function InterviewSession() {
 
       speak(displayQ, () => {
         setActiveSpeaker("user");
-        recognitionRef.current?.start();
+
+        setTimeout(() => {
+          try {
+            recognitionRef.current?.start();
+          } catch { }
+        }, 300);
+
         startAudioAnalysis();
       });
 
@@ -769,7 +820,7 @@ export default function InterviewSession() {
   /* ---------------- TIMER ---------------- */
   const startTimer = () => {
     clearInterval(timerRef.current); // ✅ prevents duplicate timers
-    setTimeLeft(15);
+    setTimeLeft(90);
     isExtendingRef.current = false;
     lastSpeechTimeRef.current = Date.now();
 
@@ -837,9 +888,7 @@ export default function InterviewSession() {
 
   const stopAll = () => {
     clearInterval(timerRef.current);
-    try {
-      recognitionRef.current?.stop();
-    } catch { }
+    // ❌ DON'T stop recognition here
   };
 
   const evaluateAndSaveAnswer = async (question, answer) => {
@@ -1219,7 +1268,13 @@ border border-purple-200 rounded-2xl p-10
 flex flex-col justify-between shadow-inner">
 
               <div>
-                <span className="text-base font-semibold text-purple-700">
+                <span
+                  className={`text-2xl font-bold transition-all duration-300
+    ${timeLeft <= 10 && timeLeft > 0 ? "text-red-500" : ""}
+    ${timeLeft <= 0 ? "text-green-500" : ""}
+    ${timeLeft > 10 ? "text-purple-700" : ""}
+  `}
+                >
                   {timeLeft > 0
                     ? `⏱ 0:${timeLeft.toString().padStart(2, "0")}`
                     : `⏱ +${Math.abs(timeLeft).toString().padStart(2, "0")}`}
