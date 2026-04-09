@@ -5,8 +5,8 @@ import Lottie from "lottie-react";
 import { useNavigate } from "react-router-dom";
 import TopAlertBar from "../components/TopAlertBar";
 import AIMonitoringStatus from "../components/AIMonitoringStatus";
-import { calculateFinalScore } from "../../../Backend/src/utils/scoreCalculator.js";
 import { loadFaceModels, analyzeFace, calculateConfidenceScore, getTopBarAlert, postEmotion } from "../services/facialAnalysisService";
+import { completeInterviewSession, startInterviewSession, submitInterviewAnswer } from "../api/interviewSession";
 
 import robotAnimation from "../assets/robot.json";
 // import robotAnimation from "https://assets2.lottiefiles.com/packages/lf20_2ks3pjua.json";
@@ -47,6 +47,7 @@ export default function InterviewSession() {
   const [completionTime, setCompletionTime] = useState(5);
   const [currentMetrics, setCurrentMetrics] = useState(null);
   const [metricsHistory, setMetricsHistory] = useState([]);
+  const [sessionId, setSessionId] = useState("");
   const [topAlert, setTopAlert] = useState(null); // {id,type,message}
   const alertTimerRef = useRef(null); // for auto hide
   const [dismissedAlerts, setDismissedAlerts] = useState({}); // id -> timestamp
@@ -337,6 +338,7 @@ export default function InterviewSession() {
                     confidence: metricsWithConfidence.confidence,
                     attention,
                     timestamp: new Date().toISOString(),
+                    sessionId,
                   }).then(() => {
                     const now = Date.now();
                     // notify user that data is recorded but only once every 30s
@@ -377,7 +379,7 @@ export default function InterviewSession() {
         clearInterval(facialAnalysisIntervalRef.current);
       }
     };
-  }, []);
+  }, [sessionId]);
 
   /**
    * Check if an alert should be shown (not recently dismissed)
@@ -595,6 +597,16 @@ export default function InterviewSession() {
   const chooseLevel = async (lvl) => {
     setLevel(lvl);
     levelRef.current = lvl;
+    try {
+      const session = await startInterviewSession({
+        mode,
+        topic: value,
+        level: lvl,
+      });
+      setSessionId(session.sessionId);
+    } catch (error) {
+      console.error("Failed to start interview session:", error);
+    }
 
     const msg = `You have selected the ${lvl} level. Let's start the interview.`;
     setQuestion(msg);
@@ -824,6 +836,24 @@ export default function InterviewSession() {
     } catch { }
   };
 
+  const evaluateAndSaveAnswer = async (question, answer) => {
+    try {
+      if (!sessionId) {
+        return null;
+      }
+
+      const data = await submitInterviewAnswer(sessionId, {
+        question,
+        answer,
+      });
+
+      return data?.evaluation || null;
+    } catch (err) {
+      console.error("Failed to save answer evaluation:", err);
+      return null;
+    }
+  };
+
   /* ---------------- NEXT QUESTION ---------------- */
   const nextQuestion = async () => {
     if (isProcessingRef.current) return;
@@ -836,7 +866,7 @@ export default function InterviewSession() {
 
     // 🧠 STEP 2: Evaluate answer BEFORE moving ahead
     if (currentQuestion && userAnswer.trim()) {
-      const result = await evaluateAnswer(currentQuestion, userAnswer);
+      const result = await evaluateAndSaveAnswer(currentQuestion, userAnswer);
 
       if (result) {
         console.log("✅ Score stored:", result);
@@ -885,6 +915,28 @@ export default function InterviewSession() {
       nextQuestion();
     }
   };
+
+  const finalizeInterviewAndNavigate = async () => {
+    let report = null;
+
+    if (sessionId) {
+      try {
+        report = await completeInterviewSession(sessionId);
+      } catch (err) {
+        console.error("Failed to complete interview session:", err);
+      }
+    }
+
+    navigate("/mock-interview/score", {
+      state: {
+        sessionId,
+        report,
+        mode,
+        value,
+      },
+    });
+  };
+
   useEffect(() => {
     if (!isCompleted) return;
 
@@ -895,27 +947,7 @@ export default function InterviewSession() {
       setCompletionTime((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-
-          const scoreData = calculateFinalScore({
-            questionWeights: metricsHistory.map(m => m.difficulty || 0.7),
-            answerScores: metricsHistory.map(m => m.correctness || 0.6),
-
-            fluency: 0.6,
-            asrAccuracy: 0.7,
-            grammarComm: 0.65,
-
-            prosody: 0.5,
-            emotion: 0.6,
-          });
-
-          navigate("/mock-interview/score", {
-            state: {
-              scoreData,
-              metricsHistory,
-              mode,
-              value,
-            },
-          });
+          finalizeInterviewAndNavigate();
 
           return 0;
         }
@@ -924,7 +956,7 @@ export default function InterviewSession() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isCompleted]);
+  }, [isCompleted, sessionId]);
   const stopInterview = () => {
     clearInterval(timerRef.current);
 

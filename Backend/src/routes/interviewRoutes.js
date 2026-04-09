@@ -1,6 +1,12 @@
 console.log("InterviewRoutes loaded");
 const express = require("express");
 const router = express.Router();
+const {
+  startSession,
+  saveAnswerEvaluation,
+  completeSession,
+  getSessionReport,
+} = require("../controllers/interviewSessionController");
 
 // Role-based questions
 const frontend = require("../questions/role/frontend");
@@ -24,6 +30,11 @@ function getRandomQuestion(questionsArray) {
   const randomIndex = Math.floor(Math.random() * questionsArray.length);
   return questionsArray[randomIndex];
 }
+
+router.post("/session/start", startSession);
+router.post("/session/:sessionId/answer", saveAnswerEvaluation);
+router.post("/session/:sessionId/complete", completeSession);
+router.get("/session/:sessionId/report", getSessionReport);
 
 router.post("/next", async (req, res) => {
   console.log("Incoming body:", req.body);

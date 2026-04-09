@@ -309,12 +309,12 @@ export const getTopBarAlert = (metrics) => {
  * Post emotion record with additional attention flag to backend.
  * Called on each detection cycle for data aggregation.
  */
-export const postEmotion = async ({ emotion, confidence, timestamp, attention }) => {
+export const postEmotion = async ({ emotion, confidence, timestamp, attention, sessionId }) => {
   try {
     await fetch("http://localhost:5000/api/emotion", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ emotion, confidence, timestamp, attention }),
+      body: JSON.stringify({ emotion, confidence, timestamp, attention, sessionId }),
     });
   } catch (err) {
     console.error("Emotion API error:", err);
