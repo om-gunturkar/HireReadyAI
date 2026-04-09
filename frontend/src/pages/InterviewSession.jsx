@@ -13,6 +13,7 @@ import robotAnimation from "../assets/robot.json";
 
 
 export default function InterviewSession() {
+  const [showWarning, setShowWarning] = useState(false);
   const location = useLocation();
   const state = location.state || {};
   const navigate = useNavigate();
@@ -417,7 +418,7 @@ export default function InterviewSession() {
   useEffect(() => {
     const handleBack = () => {
       window.history.pushState(null, "", window.location.href);
-      alert("⚠️ You cannot go back during the interview.");
+      setShowWarning(true);
     };
 
     window.history.pushState(null, "", window.location.href);
@@ -825,11 +826,33 @@ export default function InterviewSession() {
 
   /* ---------------- NEXT QUESTION ---------------- */
   const nextQuestion = async () => {
-    if (isProcessingRef.current) return; // 🚫 prevent double call
+    if (isProcessingRef.current) return;
     isProcessingRef.current = true;
 
     stopAll();
 
+    const userAnswer = finalTranscript + interimTranscript;
+    const currentQuestion = rawQuestion;
+
+    // 🧠 STEP 2: Evaluate answer BEFORE moving ahead
+    if (currentQuestion && userAnswer.trim()) {
+      const result = await evaluateAnswer(currentQuestion, userAnswer);
+
+      if (result) {
+        console.log("✅ Score stored:", result);
+
+        // 👉 store AI scores inside metricsHistory
+        setMetricsHistory((prev) => [
+          ...prev,
+          {
+            ...currentMetrics,   // face + emotion data
+            aiScore: result,     // 🔥 AI evaluation
+          },
+        ]);
+      }
+    }
+
+    // 🎯 END CONDITION
     if (countRef.current >= MAX_QUESTIONS) {
       speak("Your interview is completed.");
 
@@ -841,15 +864,15 @@ export default function InterviewSession() {
       return;
     }
 
+    // 🔁 NEXT QUESTION
     setCount((prev) => {
       const newCount = prev + 1;
 
-      getQuestion(finalTranscript + interimTranscript, newCount);
+      getQuestion(userAnswer, newCount);
 
       return newCount;
     });
 
-    // small delay to release lock
     setTimeout(() => {
       isProcessingRef.current = false;
     }, 500);
@@ -1005,6 +1028,40 @@ export default function InterviewSession() {
       confidenceScore: Math.round(F * 100),
     };
   };
+
+
+  /* ---------------- Send Question ---------------- */
+  const evaluateAnswer = async (question, answer) => {
+    try {
+      const res = await fetch("http://localhost:5000/api/evaluate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          question,
+          answer,
+        }),
+      });
+
+      if (!res.ok) {
+        console.error("❌ Evaluation failed");
+        return null;
+      }
+
+      const data = await res.json();
+
+      console.log("✅ AI Evaluation:", data);
+
+      return data;
+    } catch (err) {
+      console.error("❌ Error sending answer:", err);
+      return null;
+    }
+  };
+
+
+
   /* ---------------- UI ---------------- */
   return (
     <>
@@ -1071,7 +1128,10 @@ export default function InterviewSession() {
         <AIMonitoringStatus />
         <TopAlertBar alert={topAlert} onDismiss={dismissTopAlert} />
 
-        <div className="w-full max-w-[90rem] min-h-[85vh] bg-white rounded-2xl shadow-lg border border-purple-100 p-10">
+        <div className="w-full max-w-[110rem] min-h-[90vh] 
+bg-white/80 backdrop-blur-xl 
+rounded-3xl shadow-[0_20px_80px_rgba(124,58,237,0.15)] 
+border border-purple-200 p-12">
 
           <h2 className="text-2xl font-semibold text-purple-700 mb-1">
             🎯 Mock Interview
@@ -1081,17 +1141,19 @@ export default function InterviewSession() {
             Mode: {mode} | Topic: {value}
           </p>
 
-          <div className="grid grid-cols-12 gap-8 h-full">
+          <div className="grid grid-cols-12 gap-10 h-full">
 
             {/* LEFT */}
-            <div className="col-span-4 flex flex-col gap-6">
-              <div className="h-64 bg-purple-100 border rounded-xl flex items-center justify-center">
+            <div className="col-span-4 flex flex-col gap-8">
+              <div className="h-80 bg-gradient-to-br from-purple-100 to-pink-100 
+border border-purple-200 rounded-3xl flex items-center justify-center 
+shadow-inner shadow-purple-200/50">
                 {robotAnimation && (
                   <Lottie
                     animationData={robotAnimation}
                     loop={activeSpeaker === "system"}
                     autoplay={activeSpeaker === "system"}
-                    style={{ width: 220, height: 220 }}
+                    style={{ width: 260, height: 260 }}
                   />
                 )}
               </div>
@@ -1100,7 +1162,8 @@ export default function InterviewSession() {
                 <p className="text-xs font-semibold text-gray-600 mb-2">
                   Camera Preview
                 </p>
-                <div className="h-56 bg-purple-100 border border-purple-200 rounded-[12px] overflow-hidden">
+                <div className="h-80 bg-black/95 border border-purple-300 rounded-3xl overflow-hidden 
+shadow-[0_10px_40px_rgba(0,0,0,0.4)]">
                   <div className="relative w-full h-full">
                     <CameraFeed videoRef={videoRef} />
                     <canvas
@@ -1113,16 +1176,18 @@ export default function InterviewSession() {
             </div>
 
             {/* RIGHT */}
-            <div className="col-span-8 bg-purple-50 border border-purple-200 rounded-xl p-8 flex flex-col justify-between">
+            <div className="col-span-8 bg-gradient-to-br from-purple-50 to-white 
+border border-purple-200 rounded-2xl p-10 
+flex flex-col justify-between shadow-inner">
 
               <div>
-                <span className="text-sm font-semibold">
+                <span className="text-base font-semibold text-purple-700">
                   {timeLeft > 0
                     ? `⏱ 0:${timeLeft.toString().padStart(2, "0")}`
                     : `⏱ +${Math.abs(timeLeft).toString().padStart(2, "0")}`}
                 </span>
 
-                <p className="text-lg font-medium text-purple-900 mt-4">
+                <p className="text-2xl font-semibold text-purple-900 mt-6 leading-loose tracking-wide">
                   {question}
                 </p>
                 {/* ✅ LEVEL SELECTION UI */}
@@ -1158,7 +1223,9 @@ export default function InterviewSession() {
                 <>
                   <textarea
                     rows="7"
-                    className="w-full bg-white border border-purple-300 rounded-lg p-4"
+                    className="w-full bg-white/90 border border-purple-300 
+rounded-xl p-5 shadow-inner outline-none 
+focus:ring-2 focus:ring-purple-400 text-gray-800"
                     value={finalTranscript + interimTranscript}
                     onChange={(e) => setFinalTranscript(e.target.value)}
                   />
@@ -1173,7 +1240,8 @@ export default function InterviewSession() {
 
                     <button
                       onClick={count >= MAX_QUESTIONS ? stopInterview : endAndProceed}
-                      className="px-6 py-2 bg-green-600 text-white rounded-lg"
+                      className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-500 
+text-white rounded-xl shadow-lg hover:scale-105 transition"
                     >
                       {count >= MAX_QUESTIONS ? "Submit" : "Next Question"}
                     </button>
@@ -1187,6 +1255,29 @@ export default function InterviewSession() {
             </div>
 
           </div>
+          {showWarning && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+
+              <div className="bg-white/90 backdrop-blur-xl p-8 rounded-2xl shadow-2xl w-[400px] text-center border border-purple-200">
+
+                <h2 className="text-xl font-semibold text-purple-700 mb-3">
+                  ⚠️ Action Restricted
+                </h2>
+
+                <p className="text-gray-600 mb-6">
+                  You cannot go back during the interview.
+                </p>
+
+                <button
+                  onClick={() => setShowWarning(false)}
+                  className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-lg shadow-md hover:scale-105 transition"
+                >
+                  OK
+                </button>
+
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>

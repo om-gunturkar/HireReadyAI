@@ -1,0 +1,39 @@
+/* 🔥 Gradient Text Animation */
+.gradient-text {
+  background: linear-gradient(270deg, #7c3aed, #ec4899, #7c3aed);
+  background-size: 600% 600%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientMove 6s ease infinite;
+}
+
+@keyframes gradientMove {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* 🔥 Glowing Cursor */
+.glow-cursor {
+  color: #a855f7;
+  text-shadow:
+    0 0 8px #a855f7,
+    0 0 16px #ec4899;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}

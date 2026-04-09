@@ -12,6 +12,8 @@ import ResumeTemplates from "./pages/ResumeTemplates";
 import CreateResume from "./pages/CreateResume";
 import RoleBasedResume from "./pages/RoleBasedResume";
 import ScoreAnalysis from "./pages/ScoreAnalysis";
+import Settings from "./pages/Settings";
+
 
 function App() {
   return (
@@ -26,6 +28,7 @@ function App() {
 
         {/* Home / Dashboard */}
         <Route path="/home" element={<Home />} />
+        <Route path="/settings" element={<Settings />} />
 
         {/* Mock Interview */}
         <Route path="/mock-interview" element={<InterviewSetup />} />
