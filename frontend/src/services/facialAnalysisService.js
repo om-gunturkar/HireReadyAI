@@ -321,6 +321,40 @@ export const postEmotion = async ({ emotion, confidence, timestamp, attention, s
   }
 };
 
+export const captureFaceDescriptor = async (videoElement) => {
+  if (!videoElement) {
+    throw new Error("Camera is not ready");
+  }
+
+  await loadFaceModels();
+
+  const detection = await faceapi
+    .detectSingleFace(videoElement, new faceapi.TinyFaceDetectorOptions())
+    .withFaceLandmarks()
+    .withFaceDescriptor();
+
+  if (!detection?.descriptor) {
+    throw new Error("No face detected. Please look at the camera and try again.");
+  }
+
+  return Array.from(detection.descriptor);
+};
+
+export const captureFaceSnapshot = (videoElement) => {
+  if (!videoElement || !videoElement.videoWidth || !videoElement.videoHeight) {
+    throw new Error("Camera preview is not ready for snapshot");
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = videoElement.videoWidth;
+  canvas.height = videoElement.videoHeight;
+
+  const context = canvas.getContext("2d");
+  context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+
+  return canvas.toDataURL("image/jpeg", 0.85);
+};
+
 /**
  * Format metrics for report
  */

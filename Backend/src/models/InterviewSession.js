@@ -17,6 +17,7 @@ const AnswerSchema = new mongoose.Schema(
 const InterviewSessionSchema = new mongoose.Schema(
   {
     sessionId: { type: String, required: true, unique: true, index: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null, index: true },
     mode: { type: String, required: true, trim: true },
     topic: { type: String, required: true, trim: true },
     level: { type: String, required: true, trim: true },

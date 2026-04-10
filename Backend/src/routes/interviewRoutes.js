@@ -1,6 +1,7 @@
 console.log("InterviewRoutes loaded");
 const express = require("express");
 const router = express.Router();
+const authMiddleware = require("../middleware/authMiddleware");
 const {
   startSession,
   saveAnswerEvaluation,
@@ -85,10 +86,20 @@ async function maybeGenerateFollowUp({
   };
 }
 
-router.post("/session/start", startSession);
-router.post("/session/:sessionId/answer", saveAnswerEvaluation);
-router.post("/session/:sessionId/complete", completeSession);
-router.get("/session/:sessionId/report", getSessionReport);
+const optionalAuth = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return next();
+  }
+
+  return authMiddleware(req, res, next);
+};
+
+router.post("/session/start", optionalAuth, startSession);
+router.post("/session/:sessionId/answer", optionalAuth, saveAnswerEvaluation);
+router.post("/session/:sessionId/complete", optionalAuth, completeSession);
+router.get("/session/:sessionId/report", optionalAuth, getSessionReport);
 
 router.post("/next", async (req, res) => {
   console.log("Incoming body:", req.body);

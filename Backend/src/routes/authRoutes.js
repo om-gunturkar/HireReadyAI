@@ -7,6 +7,23 @@ const User = require("../models/User.js");
 
 const router = express.Router();
 
+const compareFaceDescriptors = (stored = [], incoming = []) => {
+  if (!Array.isArray(stored) || !Array.isArray(incoming) || stored.length !== incoming.length || stored.length === 0) {
+    return { matched: false, distance: null };
+  }
+
+  const sum = stored.reduce((acc, value, index) => {
+    const diff = Number(value) - Number(incoming[index] || 0);
+    return acc + diff * diff;
+  }, 0);
+
+  const distance = Math.sqrt(sum);
+  return {
+    matched: distance <= 0.6,
+    distance,
+  };
+};
+
 /* ==============================
    🔐 AUTH MIDDLEWARE (INLINE)
 ============================== */
@@ -45,7 +62,11 @@ const upload = multer({ storage });
    🚀 SIGNUP
 ============================== */
 router.post("/signup", async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, faceDescriptor = [] } = req.body;
+
+  if (!Array.isArray(faceDescriptor) || faceDescriptor.length === 0) {
+    return res.status(400).json({ message: "Face scan is required during signup" });
+  }
 
   const exists = await User.findOne({ email });
   if (exists) {
@@ -58,10 +79,16 @@ router.post("/signup", async (req, res) => {
     name,
     email,
     password: hashedPassword,
+    faceDescriptor,
+    faceEnrolledAt: new Date(),
+    emailVerified: true,
   });
 
   await user.save();
-  res.json({ message: "Signup successful" });
+
+  res.json({
+    message: "Signup successful. You can log in with password and face scan.",
+  });
 });
 
 /* ==============================
@@ -69,7 +96,7 @@ router.post("/signup", async (req, res) => {
 ============================== */
 router.post("/login", async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, faceDescriptor = [] } = req.body;
 
     const user = await User.findOne({ email });
     if (!user) {
@@ -80,6 +107,18 @@ router.post("/login", async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid email or password" });
     }
+
+    if (!Array.isArray(faceDescriptor) || faceDescriptor.length === 0) {
+      return res.status(400).json({ message: "Face verification is required to log in" });
+    }
+
+    const { matched } = compareFaceDescriptors(user.faceDescriptor, faceDescriptor);
+    if (!matched) {
+      return res.status(401).json({ message: "Face verification failed. Please use the enrolled person to log in." });
+    }
+
+    user.lastLoginAt = new Date();
+    await user.save();
 
     const token = jwt.sign(
       {

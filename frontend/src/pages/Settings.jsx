@@ -19,7 +19,12 @@ export default function Settings() {
     useEffect(() => {
         const fetchUser = async () => {
             try {
-                const token = localStorage.getItem("token");
+                const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+
+                if (!token) {
+                    navigate("/login");
+                    return;
+                }
 
                 const res = await fetch("http://localhost:5000/api/auth/me", {
                     headers: {
@@ -56,7 +61,7 @@ export default function Settings() {
 
     // ✅ UPDATE PROFILE
     const handleUpdate = async () => {
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("token") || sessionStorage.getItem("token");
         console.log("TOKEN:", token);
         if (!token) {
             toast.error("Session expired. Please login again.");

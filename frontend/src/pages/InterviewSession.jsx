@@ -49,6 +49,7 @@ export default function InterviewSession() {
   const [metricsHistory, setMetricsHistory] = useState([]);
   const [sessionId, setSessionId] = useState("");
   const [topAlert, setTopAlert] = useState(null); // {id,type,message}
+  const [userFaceSnapshot, setUserFaceSnapshot] = useState("");
   const alertTimerRef = useRef(null); // for auto hide
   const [dismissedAlerts, setDismissedAlerts] = useState({}); // id -> timestamp
   const facialAnalysisIntervalRef = useRef(null);
@@ -73,6 +74,14 @@ export default function InterviewSession() {
   useEffect(() => {
     countRef.current = count;
   }, [count]);
+
+  useEffect(() => {
+    const snapshot =
+      localStorage.getItem("userFaceSnapshot") ||
+      sessionStorage.getItem("userFaceSnapshot") ||
+      "";
+    setUserFaceSnapshot(snapshot);
+  }, []);
 
   /* Stop speech when leaving Interview page */
   useEffect(() => {
@@ -810,7 +819,6 @@ export default function InterviewSession() {
       });
 
       // ✅ START TIMER IMMEDIATELY
-      startTimer();
 
     } catch (err) {
       console.error("❌ Fetch Error:", err);
@@ -1280,6 +1288,15 @@ flex flex-col justify-between shadow-inner">
                     : `⏱ +${Math.abs(timeLeft).toString().padStart(2, "0")}`}
                 </span>
 
+                <div className="mt-4 flex justify-end">
+                  <CandidateIdentityCard
+                    title="Verified candidate"
+                    subtitle="Login face scan"
+                    image={userFaceSnapshot}
+                    topic={value}
+                  />
+                </div>
+
                 <p className="text-2xl font-semibold text-purple-900 mt-6 leading-loose tracking-wide">
                   {question}
                 </p>
@@ -1374,5 +1391,26 @@ text-white rounded-xl shadow-lg hover:scale-105 transition"
         </div>
       </div>
     </>
+  );
+}
+
+function CandidateIdentityCard({ title, subtitle, image, topic }) {
+  return (
+    <div className="w-full max-w-[260px] rounded-[1.5rem] border border-purple-200 bg-white/85 p-4 shadow-[0_12px_30px_rgba(124,58,237,0.12)]">
+      <p className="text-xs font-semibold uppercase tracking-[0.3em] text-purple-500">{title}</p>
+      <div className="mt-3 flex items-center gap-3">
+        <div className="h-16 w-16 overflow-hidden rounded-2xl border border-purple-200 bg-purple-100">
+          {image ? (
+            <img src={image} alt="Verified candidate" className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold text-purple-500">No scan</div>
+          )}
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-slate-900">{subtitle}</p>
+          <p className="mt-1 text-xs text-slate-500">Active interview: {topic || "General session"}</p>
+        </div>
+      </div>
+    </div>
   );
 }

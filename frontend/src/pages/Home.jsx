@@ -10,7 +10,7 @@ export default function Home() {
   const [userPhoto, setUserPhoto] = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
     if (!token) {
       navigate("/login");
       return;
@@ -20,100 +20,79 @@ export default function Home() {
       const decoded = jwtDecode(token);
       setUser(decoded);
 
-      // ✅ LOAD PROFILE IMAGE FROM LOCALSTORAGE
-      const photo = localStorage.getItem("userPhoto");
-      if (photo) setUserPhoto(photo);
+      const photo =
+        localStorage.getItem("userFaceSnapshot") ||
+        sessionStorage.getItem("userFaceSnapshot") ||
+        localStorage.getItem("userPhoto");
 
+      if (photo) setUserPhoto(photo);
     } catch {
       localStorage.removeItem("token");
+      sessionStorage.removeItem("token");
+      localStorage.removeItem("userFaceSnapshot");
+      sessionStorage.removeItem("userFaceSnapshot");
       navigate("/login");
     }
   }, [navigate]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    sessionStorage.removeItem("token");
+    localStorage.removeItem("userFaceSnapshot");
+    sessionStorage.removeItem("userFaceSnapshot");
     navigate("/login");
   };
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden
-    bg-gradient-to-br from-white via-purple-50 to-purple-100">
+    <div className="min-h-screen flex flex-col relative overflow-hidden bg-gradient-to-br from-white via-purple-50 to-purple-100">
+      <div className="absolute top-[-100px] left-[-100px] h-[400px] w-[400px] rounded-full bg-purple-400/30 blur-[120px]" />
+      <div className="absolute bottom-[-100px] right-[-100px] h-[400px] w-[400px] rounded-full bg-pink-400/30 blur-[120px]" />
 
-      {/* 🌈 BACKGROUND GLOW */}
-      <div className="absolute top-[-100px] left-[-100px] w-[400px] h-[400px]
-      bg-purple-400/30 blur-[120px] rounded-full"></div>
-
-      <div className="absolute bottom-[-100px] right-[-100px] w-[400px] h-[400px]
-      bg-pink-400/30 blur-[120px] rounded-full"></div>
-
-      {/* ================= NAVBAR ================= */}
-      <nav className="sticky top-0 z-50
-      bg-white/60 backdrop-blur-xl border-b border-white/30
-      px-10 py-4 flex justify-between items-center">
-
-        {/* LOGO */}
-        <h1 className="text-2xl font-extrabold bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">
+      <nav className="sticky top-0 z-50 flex items-center justify-between border-b border-white/30 bg-white/60 px-10 py-4 backdrop-blur-xl">
+        <h1 className="bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-2xl font-extrabold text-transparent">
           Hire Ready AI
         </h1>
 
-        {/* MENU */}
-        <div className="hidden md:flex gap-8 text-gray-700 font-medium">
+        <div className="hidden gap-8 font-medium text-gray-700 md:flex">
           {["Dashboard", "Interviews", "Resume", "Analytics"].map((item, i) => (
-            <span key={i} className="relative group cursor-pointer">
+            <span key={i} className="group relative cursor-pointer">
               {item}
-              <span className="absolute left-0 -bottom-1 w-0 h-[2px]
-              bg-purple-500 transition-all group-hover:w-full"></span>
+              <span className="absolute left-0 -bottom-1 h-[2px] w-0 bg-purple-500 transition-all group-hover:w-full" />
             </span>
           ))}
         </div>
 
-        {/* USER */}
         {user && (
           <div className="relative">
             <button
               onClick={() => setOpen(!open)}
-              className="flex items-center gap-3 px-3 py-2 rounded-xl
-              bg-white/40 backdrop-blur-md
-              hover:bg-white/60 transition shadow-sm"
+              className="flex items-center gap-3 rounded-xl bg-white/40 px-3 py-2 shadow-sm backdrop-blur-md transition hover:bg-white/60"
             >
-              {/* ✅ UPDATED AVATAR */}
               <img
-                src={
-                  userPhoto ||
-                  `https://ui-avatars.com/api/?name=${user.name}&background=7c3aed&color=fff`
-                }
-                className="w-10 h-10 rounded-full object-cover border-2 border-purple-500 shadow-md"
+                src={userPhoto || `https://ui-avatars.com/api/?name=${user.name}&background=7c3aed&color=fff`}
+                className="h-10 w-10 rounded-full border-2 border-purple-500 object-cover shadow-md"
               />
 
               <div className="text-left">
-                <p className="font-semibold text-gray-800 text-sm">
-                  {user.name}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {user.email}
-                </p>
+                <p className="text-sm font-semibold text-gray-800">{user.name}</p>
+                <p className="text-xs text-gray-500">{user.email}</p>
               </div>
             </button>
 
             {open && (
-              <div className="absolute right-0 mt-3 w-56
-  bg-white/90 backdrop-blur-xl
-  rounded-2xl shadow-xl border p-2 space-y-1">
-
+              <div className="absolute right-0 mt-3 w-56 space-y-1 rounded-2xl border bg-white/90 p-2 shadow-xl backdrop-blur-xl">
                 <button
                   onClick={() => navigate("/settings")}
-                  className="w-full text-left px-4 py-2
-      hover:bg-purple-50 rounded-lg transition"
+                  className="w-full rounded-lg px-4 py-2 text-left transition hover:bg-purple-50"
                 >
-                  ⚙️ Settings
+                  Settings
                 </button>
 
                 <button
                   onClick={handleLogout}
-                  className="w-full text-left px-4 py-2
-      text-red-500 hover:bg-red-50 rounded-lg transition"
+                  className="w-full rounded-lg px-4 py-2 text-left text-red-500 transition hover:bg-red-50"
                 >
-                  🚪 Logout
+                  Logout
                 </button>
               </div>
             )}
@@ -121,35 +100,30 @@ export default function Home() {
         )}
       </nav>
 
-      {/* ================= MAIN CONTENT ================= */}
       <div className="flex-grow">
-
-        {/* HERO */}
         <motion.section
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="flex flex-col items-center text-center mt-28 px-6 relative"
+          className="relative mt-28 flex flex-col items-center px-6 text-center"
         >
-
-          <h2 className="text-5xl md:text-6xl font-extrabold mb-6 leading-tight">
+          <h2 className="mb-6 text-5xl font-extrabold leading-tight md:text-6xl">
             <span className="text-gray-900">Practice Smarter.</span> <br />
-            <span className="bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent animate-pulse">
+            <span className="animate-pulse bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">
               Get Hired Faster.
             </span>
           </h2>
 
-          <p className="max-w-2xl text-gray-600 text-lg mb-16">
-            AI-powered resumes, mock interviews, and real-time feedback —
+          <p className="mb-16 max-w-2xl text-lg text-gray-600">
+            AI-powered resumes, mock interviews, and real-time feedback -
             everything you need to crack interviews confidently.
           </p>
 
-          {/* CARDS */}
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="flex flex-col md:flex-row gap-12 justify-center"
+            className="flex flex-col justify-center gap-12 md:flex-row"
           >
             {[
               {
@@ -157,75 +131,35 @@ export default function Home() {
                 title: "Create Resume",
                 desc: "AI-powered ATS-friendly resume builder",
                 path: "/create-resume",
-                btn: "Get Started →"
+                btn: "Get Started ->",
               },
               {
                 icon: "🎤",
                 title: "Mock Interview",
                 desc: "Real-time AI interview + scoring",
                 path: "/mock-interview",
-                btn: "Start Interview →"
-              }
+                btn: "Start Interview ->",
+              },
             ].map((card, i) => (
-
               <motion.div
                 key={i}
                 whileHover={{ scale: 1.05, y: -8 }}
                 onClick={() => navigate(card.path)}
-                className="group cursor-pointer w-80 rounded-3xl p-10
-                bg-white/30 backdrop-blur-xl border border-white/30
-                shadow-lg hover:shadow-[0_20px_60px_rgba(124,58,237,0.3)]
-                transition duration-300"
+                className="group w-80 cursor-pointer rounded-3xl border border-white/30 bg-white/30 p-10 shadow-lg transition duration-300 hover:shadow-[0_20px_60px_rgba(124,58,237,0.3)] backdrop-blur-xl"
               >
-                <div className="text-5xl mb-6 group-hover:scale-110 transition">
-                  {card.icon}
-                </div>
-
-                <h3 className="text-2xl font-semibold text-gray-800 mb-2">
-                  {card.title}
-                </h3>
-
-                <p className="text-gray-600 text-sm">{card.desc}</p>
-
-                <button className="mt-6 px-6 py-2 rounded-full
-                bg-gradient-to-r from-purple-600 to-pink-500
-                text-white text-sm shadow-md hover:shadow-lg transition">
+                <div className="mb-6 text-5xl transition group-hover:scale-110">{card.icon}</div>
+                <h3 className="mb-2 text-2xl font-semibold text-gray-800">{card.title}</h3>
+                <p className="text-sm text-gray-600">{card.desc}</p>
+                <button className="mt-6 rounded-full bg-gradient-to-r from-purple-600 to-pink-500 px-6 py-2 text-sm text-white shadow-md transition hover:shadow-lg">
                   {card.btn}
                 </button>
               </motion.div>
             ))}
           </motion.div>
-
         </motion.section>
       </div>
 
-      {/* STATS
-      <motion.div
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto"
-      >
-
-        <div className="bg-white/70 backdrop-blur-xl p-6 rounded-2xl shadow-lg border">
-          <p className="text-gray-500 text-sm">Interviews Taken</p>
-          <h3 className="text-3xl font-bold text-purple-600 mt-1">12</h3>
-        </div>
-
-        <div className="bg-white/70 backdrop-blur-xl p-6 rounded-2xl shadow-lg border">
-          <p className="text-gray-500 text-sm">Avg Score</p>
-          <h3 className="text-3xl font-bold text-purple-600 mt-1">78%</h3>
-        </div>
-
-        <div className="bg-white/70 backdrop-blur-xl p-6 rounded-2xl shadow-lg border">
-          <p className="text-gray-500 text-sm">Confidence</p>
-          <h3 className="text-3xl font-bold text-purple-600 mt-1">85%</h3>
-        </div>
-
-      </motion.div> */}
-
-      {/* FOOTER */}
-      <footer className="bg-white/70 backdrop-blur-md border-t py-6 text-center text-sm text-gray-500 mt-auto">
+      <footer className="mt-auto border-t bg-white/70 py-6 text-center text-sm text-gray-500 backdrop-blur-md">
         © {new Date().getFullYear()} Hire Ready AI. All rights reserved.
       </footer>
     </div>

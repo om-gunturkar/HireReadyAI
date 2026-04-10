@@ -1,9 +1,15 @@
 const crypto = require("crypto");
 const Emotion = require("../models/Emotion");
 const InterviewSession = require("../models/InterviewSession");
+const FeedbackScore = require("../models/FeedbackScore");
+const User = require("../models/User");
 const { evaluateWithAI } = require("../services/evaluationService");
+const { sendInterviewReportEmail } = require("../services/reportEmailService");
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+const normalizeDomainKey = (value) => String(value || "").trim().toLowerCase();
+const escapeRegex = (value) => String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const toHundredScale = (score) => {
   const numeric = Number(score);
@@ -116,6 +122,86 @@ const buildSummary = (session, emotions) => {
   };
 };
 
+const assertSessionAccess = (session, req) => {
+  if (!session?.userId) return null;
+
+  if (!req.user?.id) {
+    return { status: 401, payload: { error: "Login required to access this interview session" } };
+  }
+
+  if (String(session.userId) !== String(req.user.id)) {
+    return { status: 403, payload: { error: "You are not allowed to access this interview session" } };
+  }
+
+  return null;
+};
+
+const getDomainHistory = async (session) => {
+  if (!session?.userId || !session?.completedAt) {
+    return [];
+  }
+
+  const feedbackEntries = await FeedbackScore.find({
+    userId: session.userId,
+    mode: session.mode,
+    topic: new RegExp(`^${escapeRegex(normalizeDomainKey(session.topic))}$`, "i"),
+    completedAt: { $ne: null },
+  })
+    .sort({ completedAt: 1, createdAt: 1 })
+    .select("sessionId mode topic level scoreData summary completedAt startedAt");
+
+  return feedbackEntries.map((item, index) => ({
+    attempt: index + 1,
+    sessionId: item.sessionId,
+    mode: item.mode,
+    topic: item.topic,
+    level: item.level,
+    completedAt: item.completedAt,
+    startedAt: item.startedAt,
+    scoreData: item.scoreData,
+    summary: {
+      strengths: item.summary?.strengths || [],
+      improvements: item.summary?.improvements || [],
+      focusScore: item.summary?.focusScore || 0,
+      composureScore: item.summary?.composureScore || 0,
+      averageVisualConfidence: item.summary?.averageVisualConfidence || 0,
+    },
+  }));
+};
+
+const appendHistoryToResponse = async (session, baseResponse) => {
+  let history = await getDomainHistory(session);
+
+  if (!history.length && session?.completedAt) {
+    history = [{
+      attempt: 1,
+      sessionId: session.sessionId,
+      mode: session.mode,
+      topic: session.topic,
+      level: session.level,
+      completedAt: session.completedAt,
+      startedAt: session.startedAt,
+      scoreData: session.scoreData,
+      summary: {
+        strengths: session.summary?.strengths || [],
+        improvements: session.summary?.improvements || [],
+        focusScore: session.summary?.focusScore || 0,
+        composureScore: session.summary?.composureScore || 0,
+        averageVisualConfidence: session.summary?.averageVisualConfidence || 0,
+      },
+    }];
+  }
+
+  const currentIndex = history.findIndex((item) => item.sessionId === session.sessionId);
+  const previousAttempt = currentIndex > 0 ? history[currentIndex - 1] : null;
+
+  return {
+    ...baseResponse,
+    history,
+    previousAttempt,
+  };
+};
+
 exports.startSession = async (req, res) => {
   try {
     const { mode, topic, level } = req.body;
@@ -127,6 +213,7 @@ exports.startSession = async (req, res) => {
     const sessionId = crypto.randomUUID();
     const session = await InterviewSession.create({
       sessionId,
+      userId: req.user?.id || null,
       mode,
       topic,
       level,
@@ -143,6 +230,31 @@ exports.startSession = async (req, res) => {
   }
 };
 
+const syncFeedbackScore = async (session, report) => {
+  if (!session?.completedAt) return null;
+
+  return FeedbackScore.findOneAndUpdate(
+    { sessionId: session.sessionId },
+    {
+      sessionId: session.sessionId,
+      userId: session.userId || null,
+      mode: session.mode,
+      topic: session.topic,
+      level: session.level,
+      startedAt: session.startedAt,
+      completedAt: session.completedAt,
+      scoreData: report.scoreData,
+      summary: report.summary,
+      answers: session.answers || [],
+    },
+    {
+      upsert: true,
+      new: true,
+      setDefaultsOnInsert: true,
+    }
+  );
+};
+
 exports.saveAnswerEvaluation = async (req, res) => {
   try {
     const { sessionId } = req.params;
@@ -155,6 +267,11 @@ exports.saveAnswerEvaluation = async (req, res) => {
     const session = await InterviewSession.findOne({ sessionId });
     if (!session) {
       return res.status(404).json({ error: "Session not found" });
+    }
+
+    const accessError = assertSessionAccess(session, req);
+    if (accessError) {
+      return res.status(accessError.status).json(accessError.payload);
     }
 
     const aiResult = await evaluateWithAI(question, answer);
@@ -194,6 +311,11 @@ exports.completeSession = async (req, res) => {
       return res.status(404).json({ error: "Session not found" });
     }
 
+    const accessError = assertSessionAccess(session, req);
+    if (accessError) {
+      return res.status(accessError.status).json(accessError.payload);
+    }
+
     const emotions = await Emotion.find({ sessionId }).sort({ timestamp: 1 });
     const report = buildSummary(session, emotions);
 
@@ -202,16 +324,37 @@ exports.completeSession = async (req, res) => {
     session.scoreData = report.scoreData;
     session.summary = report.summary;
     await session.save();
+    await syncFeedbackScore(session, report);
 
-    return res.status(200).json({
+    const response = await appendHistoryToResponse(session, {
       message: "Interview completed",
       sessionId,
       mode: session.mode,
       topic: session.topic,
       level: session.level,
+      status: session.status,
+      startedAt: session.startedAt,
+      completedAt: session.completedAt,
       answers: session.answers,
       ...report,
     });
+
+    if (session.userId) {
+      try {
+        const user = await User.findById(session.userId).select("name email");
+        if (user?.email) {
+          await sendInterviewReportEmail({
+            to: user.email,
+            name: user.name,
+            session: response,
+          });
+        }
+      } catch (emailError) {
+        console.error("sendInterviewReportEmail error:", emailError);
+      }
+    }
+
+    return res.status(200).json(response);
   } catch (err) {
     console.error("completeSession error:", err);
     return res.status(500).json({ error: "Failed to complete session" });
@@ -227,6 +370,11 @@ exports.getSessionReport = async (req, res) => {
       return res.status(404).json({ error: "Session not found" });
     }
 
+    const accessError = assertSessionAccess(session, req);
+    if (accessError) {
+      return res.status(accessError.status).json(accessError.payload);
+    }
+
     let scoreData = session.scoreData;
     let summary = session.summary;
 
@@ -237,7 +385,7 @@ exports.getSessionReport = async (req, res) => {
       summary = report.summary;
     }
 
-    return res.status(200).json({
+    const response = await appendHistoryToResponse(session, {
       sessionId: session.sessionId,
       mode: session.mode,
       topic: session.topic,
@@ -249,6 +397,8 @@ exports.getSessionReport = async (req, res) => {
       scoreData,
       summary,
     });
+
+    return res.status(200).json(response);
   } catch (err) {
     console.error("getSessionReport error:", err);
     return res.status(500).json({ error: "Failed to fetch session report" });

@@ -1,24 +1,60 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import CameraFeed from "./CameraFeed";
+import { captureFaceDescriptor, captureFaceSnapshot, loadFaceModels } from "../services/facialAnalysisService";
 
 export default function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [faceDescriptor, setFaceDescriptor] = useState([]);
+  const [faceSnapshot, setFaceSnapshot] = useState("");
+  const [faceStatus, setFaceStatus] = useState("Face verification required");
+  const [submitting, setSubmitting] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const videoRef = useRef(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    loadFaceModels().catch(() => {
+      setFaceStatus("Unable to load face scanner");
+    });
+  }, []);
+
+  const handleFaceScan = async () => {
+    try {
+      setScanning(true);
+      setFaceStatus("Verifying face...");
+      const descriptor = await captureFaceDescriptor(videoRef.current);
+      const snapshot = captureFaceSnapshot(videoRef.current);
+      setFaceDescriptor(descriptor);
+      setFaceSnapshot(snapshot);
+      setFaceStatus("Face captured successfully");
+    } catch (error) {
+      setFaceStatus(error.message || "Face scan failed");
+    } finally {
+      setScanning(false);
+    }
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
 
+    if (!faceDescriptor.length) {
+      alert("Please scan your face before logging in.");
+      return;
+    }
+
     try {
+      setSubmitting(true);
       const res = await fetch("http://localhost:5000/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, faceDescriptor }),
       });
 
       const data = await res.json();
@@ -30,12 +66,20 @@ export default function Login() {
 
       if (rememberMe) {
         localStorage.setItem("token", data.token);
+        if (faceSnapshot) localStorage.setItem("userFaceSnapshot", faceSnapshot);
+        sessionStorage.removeItem("userFaceSnapshot");
+        sessionStorage.removeItem("token");
       } else {
         sessionStorage.setItem("token", data.token);
+        if (faceSnapshot) sessionStorage.setItem("userFaceSnapshot", faceSnapshot);
+        localStorage.removeItem("userFaceSnapshot");
+        localStorage.removeItem("token");
       }
       navigate("/home");
     } catch (error) {
       alert("Something went wrong");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -120,6 +164,27 @@ export default function Login() {
             </button>
           </div>
 
+          <div className="rounded-2xl border border-purple-200 bg-purple-50/70 p-4">
+            <p className="text-sm font-semibold text-purple-700">Face verification</p>
+            <p className="mt-1 text-xs text-gray-600">
+              Use the same person who enrolled during signup.
+            </p>
+            <div className="mt-4 h-52 overflow-hidden rounded-xl border border-purple-200 bg-black">
+              <CameraFeed videoRef={videoRef} />
+            </div>
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <p className="text-xs text-gray-600">{faceStatus}</p>
+              <button
+                type="button"
+                onClick={handleFaceScan}
+                disabled={scanning}
+                className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-purple-700 shadow-sm ring-1 ring-purple-200 transition hover:bg-purple-100 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {scanning ? "Scanning..." : faceDescriptor.length ? "Rescan Face" : "Scan Face"}
+              </button>
+            </div>
+          </div>
+
           {/* 🎨 ANIMATED CHECKBOX */}
           <div className="flex items-center justify-between px-1">
 
@@ -161,12 +226,13 @@ export default function Login() {
           {/* LOGIN BUTTON */}
           <button
             type="submit"
+            disabled={submitting}
             className="w-full py-4 rounded-xl
     bg-gradient-to-r from-purple-600 to-pink-500
     text-white font-semibold text-lg
-    shadow-lg hover:scale-105 hover:shadow-xl transition duration-300"
+    shadow-lg hover:scale-105 hover:shadow-xl transition duration-300 disabled:cursor-not-allowed disabled:opacity-70"
           >
-            Login
+            {submitting ? "Logging in..." : "Login"}
           </button>
         </form>
 
