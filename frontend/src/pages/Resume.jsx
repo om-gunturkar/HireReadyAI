@@ -163,10 +163,10 @@ export default function Resume() {
   ======================== */
 
   return (
-    <div className="flex h-screen bg-gray-50">
-
+    <div className="min-h-[100dvh] bg-gray-50 lg:h-[100dvh]">
+      <div className="page-frame flex h-full min-h-[100dvh] flex-col py-3 sm:py-4 lg:box-border lg:min-h-[calc(100dvh-3rem)] lg:max-h-[calc(100dvh-3rem)] lg:flex-row lg:overflow-hidden lg:py-4">
       {/* LEFT SIDE */}
-      <div className="w-1/2 h-full overflow-y-auto px-10 py-10">
+      <div className="h-[min(55vh,520px)] w-full min-h-0 shrink-0 overflow-y-auto py-4 sm:py-6 lg:h-full lg:w-1/2 lg:max-h-full lg:overflow-y-auto lg:pr-4 lg:py-2">
 
         <h1 className="text-3xl font-bold mb-6">Create Resume</h1>
 
@@ -483,7 +483,7 @@ export default function Resume() {
       </div>
 
       {/* RIGHT PDF */}
-      <div className="w-1/2 h-full bg-gray-200 flex justify-center p-6 overflow-auto">
+      <div className="flex min-h-[45vh] w-full flex-1 flex-col justify-center overflow-auto rounded-xl bg-gray-200 p-3 sm:p-4 lg:h-full lg:min-h-0 lg:w-1/2 lg:max-h-full lg:rounded-l-none lg:rounded-r-xl">
         <Suspense fallback={<div>Loading...</div>}>
           <PDFViewer width="100%" height="100%">
             <SelectedTemplate data={resumeData} />
@@ -491,6 +491,7 @@ export default function Resume() {
         </Suspense>
       </div>
 
+      </div>
     </div>
   );
 }

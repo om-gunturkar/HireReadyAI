@@ -1,448 +1,243 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import { Typewriter } from "react-simple-typewriter";
+import { motion, AnimatePresence } from "framer-motion";
+import { Menu, X } from "lucide-react";
 
-function DashboardPreview() {
+const featureCards = [
+  {
+    title: "Mock Interviews That Feel Real",
+    text: "Role-based, language-based, and resume-based interviews with live scoring, camera analysis, and structured answer evaluation.",
+    stat: "10-question live flow",
+  },
+  {
+    title: "Confidence + Focus Tracking",
+    text: "Keep facial signals, focus stability, and speaking behavior in one practical performance report instead of scattered metrics.",
+    stat: "Behavior + answer analytics",
+  },
+  {
+    title: "Resume To Interview Journey",
+    text: "Build, optimize, and practice in the same product so candidates can improve fast without switching tools.",
+    stat: "Single workflow product",
+  },
+];
+
+const workflow = [
+  "Create your account and secure it with face scan login.",
+  "Choose a domain, role, language, or upload a resume.",
+  "Practice with the live AI interview and camera analysis flow.",
+  "Review score trends, strengths, improvements, and email-ready reports.",
+];
+
+const trustStats = [
+  { label: "Interview modes", value: "3", hint: "Role, language, resume" },
+  { label: "Live questions", value: "10", hint: "Per scored session" },
+  { label: "Signals tracked", value: "6+", hint: "Face, voice, focus, time" },
+];
+
+export default function LandingPage() {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 60 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8 }}
-      className="mt-20 flex justify-center"
-    >
-      <div className="bg-white rounded-2xl shadow-2xl p-6 w-[90%] max-w-4xl border">
-
-        {/* TOP BAR */}
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="font-semibold text-gray-700">Interview Dashboard</h3>
-          <span className="text-sm text-green-500">● Live</span>
-        </div>
-
-        {/* CONTENT */}
-        <div className="grid md:grid-cols-3 gap-4">
-
-          {/* SCORE */}
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="bg-purple-50 p-4 rounded-xl"
-          >
-            <p className="text-sm text-gray-500">Confidence</p>
-            <p className="text-2xl font-bold text-purple-600">85%</p>
-          </motion.div>
-
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="bg-purple-50 p-4 rounded-xl"
-          >
-            <p className="text-sm text-gray-500">Communication</p>
-            <p className="text-2xl font-bold text-purple-600">78%</p>
-          </motion.div>
-
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="bg-purple-50 p-4 rounded-xl"
-          >
-            <p className="text-sm text-gray-500">Technical</p>
-            <p className="text-2xl font-bold text-purple-600">82%</p>
-          </motion.div>
-
-        </div>
-
-        {/* FAKE GRAPH */}
-        <div className="mt-6 h-24 bg-gradient-to-r from-purple-200 to-pink-200 rounded-xl animate-pulse"></div>
-
-      </div>
-    </motion.div>
-  );
-}
-export default function App() {
-  return (
-    <div className="font-sans text-gray-800 bg-gradient-to-b from-white to-purple-50">
-
-      {/* ================= NAVBAR ================= */}
-      <motion.nav
-        initial={{ y: -80, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="flex justify-between items-center px-10 py-5 backdrop-blur-md bg-white/70 sticky top-0 z-50"
-      >
-        <h1 className="text-3xl font-extrabold bg-gradient-to-r from-purple-600 to-pink-500 text-transparent bg-clip-text">
-          Hire Ready AI
-        </h1>
-
-        <div className="flex items-center gap-6">
-          <a href="#features" className="hover:text-purple-600 transition">Features</a>
-          <a href="#pricing" className="hover:text-purple-600 transition">Pricing</a>
-
-          <Link to="/login">
-            <button className="bg-gradient-to-r from-purple-600 to-pink-500 text-white px-5 py-2 rounded-xl shadow hover:scale-105 transition">
-              Login
-            </button>
+    <div className="app-shell overflow-hidden">
+      <div className="page-frame">
+        <motion.nav
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card sticky top-3 z-40 mt-2 flex flex-wrap items-center gap-3 rounded-[1.75rem] px-5 py-3.5 shadow-[0_20px_50px_rgba(15,23,42,0.08)] sm:px-6 sm:py-4"
+        >
+          <Link to="/" className="min-w-0 flex-1 basis-[200px]" onClick={() => setMenuOpen(false)}>
+            <p className="eyebrow">Hire Ready AI</p>
+            <h1 className="mt-1 text-lg font-semibold leading-snug text-slate-900 sm:text-xl lg:text-2xl">Interview prep with a product feel</h1>
           </Link>
-        </div>
-      </motion.nav>
 
-      {/* ================= HERO ================= */}
-      <section className="px-8 py-24">
-        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 items-center">
+          <div className="hidden items-center gap-6 text-sm text-slate-600 md:flex">
+            <a href="#features" className="transition hover:text-slate-900">Features</a>
+            <a href="#workflow" className="transition hover:text-slate-900">Workflow</a>
+            <a href="#project" className="transition hover:text-slate-900">Why Us</a>
+          </div>
 
-          {/* LEFT */}
-          <motion.div
-            initial={{ opacity: 0, x: -60 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
-            className="space-y-6"
-          >
-            {/* 🔥 HERO HEADING */}
-            <h1 className="text-5xl font-bold leading-tight">
-              Practice Smarter. <br />
-
-              <span className="gradient-text">
-                <Typewriter
-                  words={[
-                    "Get Hired Faster.",
-                    "Crack Interviews Easily.",
-                    "Boost Your Confidence.",
-                    "Land Your Dream Job."
-                  ]}
-                  loop={true}
-                  cursor={false} // ❌ disable default cursor
-                  typeSpeed={65}
-                  deleteSpeed={40}
-                  delaySpeed={1500}
-                />
-              </span>
-
-              {/* 🔥 GLOW CURSOR */}
-              <span className="glow-cursor ml-1">|</span>
-            </h1>
-
-            {/* 🔥 DESCRIPTION */}
-            <p className="text-gray-600 text-lg">
-              AI-powered resumes, mock interviews, and real-time feedback —
-              everything you need to crack interviews confidently.
-            </p>
-
-            {/* 🔥 FEATURES LIST */}
-            <ul className="space-y-2 text-gray-700">
-              <li className="hover:translate-x-1 transition">🎯 Personalized Resume Builder</li>
-              <li className="hover:translate-x-1 transition">📊 Skill Gap Analysis</li>
-              <li className="hover:translate-x-1 transition">🎤 AI Mock Interviews</li>
-              <li className="hover:translate-x-1 transition">📈 Confidence Tracking</li>
-            </ul>
-
-            {/* 🔥 BUTTONS */}
-            <div className="flex gap-4">
-              <Link to="/signup">
-                <button className="bg-gradient-to-r from-purple-600 to-pink-500 text-white px-6 py-3 rounded-xl shadow-lg hover:scale-105 hover:shadow-xl transition duration-300">
-                  Get Started Free
-                </button>
-              </Link>
-
-              <button className="border px-6 py-3 rounded-xl hover:bg-gray-100 hover:scale-105 transition duration-300">
-                ▶ Watch Demo
-              </button>
-            </div>
-          </motion.div>
-
-
-          {/* ================= RIGHT SIDE ================= */}
-          <motion.div
-            initial={{ opacity: 0, x: 60 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
-            className="grid grid-cols-2 gap-6"
-          >
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              className="bg-white p-6 rounded-2xl shadow-md hover:shadow-xl transition"
+          <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-3">
+            <button
+              type="button"
+              className="rounded-2xl border border-slate-200 p-2.5 text-slate-700 md:hidden"
+              aria-expanded={menuOpen}
+              aria-label="Toggle menu"
+              onClick={() => setMenuOpen((o) => !o)}
             >
-              <p className="text-sm text-gray-500">Resume Score</p>
-              <p className="text-4xl font-bold text-purple-600 mt-2">82%</p>
-            </motion.div>
+              {menuOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
+            <Link to="/login" className="secondary-btn px-4 py-2 text-sm whitespace-nowrap">Login</Link>
+            <Link to="/signup" className="primary-btn px-4 py-2.5 text-sm whitespace-nowrap sm:px-5">Start Free</Link>
+          </div>
 
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              className="bg-white p-6 rounded-2xl shadow-md hover:shadow-xl transition"
-            >
-              <p className="text-sm text-gray-500">Profile Completion</p>
-              <p className="text-4xl font-bold text-purple-600 mt-2">70%</p>
-            </motion.div>
-          </motion.div>
+          <AnimatePresence>
+            {menuOpen && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="w-full basis-full overflow-hidden border-t border-slate-200/80 pt-3 md:hidden"
+              >
+                <div className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+                  <a href="#features" className="rounded-xl px-3 py-2 hover:bg-slate-50" onClick={() => setMenuOpen(false)}>Features</a>
+                  <a href="#workflow" className="rounded-xl px-3 py-2 hover:bg-slate-50" onClick={() => setMenuOpen(false)}>Workflow</a>
+                  <a href="#project" className="rounded-xl px-3 py-2 hover:bg-slate-50" onClick={() => setMenuOpen(false)}>Why Us</a>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.nav>
 
-        </div>
-      </section>
-      <DashboardPreview />
-      {/* ================= FEATURES ================= */}
-      <section id="features" className="py-28 px-8 bg-gradient-to-b from-white to-purple-50">
+        <section className="relative overflow-hidden pt-8 sm:pt-12 lg:pt-14">
+          <div className="hero-mesh glass-card rounded-[2rem] px-6 py-9 shadow-[0_24px_60px_rgba(15,23,42,0.1)] sm:rounded-[2.25rem] sm:px-10 sm:py-11 lg:px-12 lg:py-14">
+            <div className="grid items-start gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12">
+              <div className="min-w-0">
+                <p className="eyebrow">AI Interview Platform</p>
+                <h2 className="section-title mt-4 text-slate-950">
+                  From resume to mock interview to feedback report, all in one polished practice loop.
+                </h2>
+                <p className="mt-6 max-w-[36rem] text-base leading-[1.75] text-slate-700 sm:text-[1.05rem]">
+                  Improve technical answers, confidence, focus, and delivery with a workflow that feels closer to a real interview product than a demo project.
+                </p>
 
-        {/* TITLE */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-16"
-        >
-          <h2 className="text-4xl md:text-5xl font-bold">
-            Powerful <span className="text-purple-600">AI Features</span>
-          </h2>
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                  <Link to="/signup" className="primary-btn px-7 py-3 text-center text-[0.95rem]">Create Account</Link>
+                  <Link to="/mock-interview" className="secondary-btn px-7 py-3 text-center text-[0.95rem]">Explore Interview Setup</Link>
+                </div>
 
-          <p className="text-gray-500 mt-4 max-w-xl mx-auto">
-            Everything you need to build resumes, crack interviews, and boost confidence — powered by AI.
-          </p>
-        </motion.div>
+                <div className="mt-8 grid gap-3 sm:grid-cols-3">
+                  {["Real-time scoring", "Face-secured login", "Trend-based reports"].map((item) => (
+                    <div key={item} className="metric-chip text-sm font-medium text-slate-800">{item}</div>
+                  ))}
+                </div>
 
-        {/* CARDS */}
-        <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-10">
-
-          {[
-            {
-              title: "AI Resume Builder",
-              desc: "Generate ATS-friendly resumes tailored to job roles instantly.",
-              icon: "📄"
-            },
-            {
-              title: "Skill Gap Analysis",
-              desc: "Identify missing skills and improve your profile strategically.",
-              icon: "📊"
-            },
-            {
-              title: "AI Mock Interviews",
-              desc: "Practice real interview questions with AI voice interaction.",
-              icon: "🎤"
-            },
-            {
-              title: "Confidence Tracking",
-              desc: "Track facial expressions and confidence in real-time.",
-              icon: "🧠"
-            },
-            {
-              title: "Real-Time Feedback",
-              desc: "Get instant AI feedback to improve your answers.",
-              icon: "⚡"
-            },
-            {
-              title: "ATS Optimization",
-              desc: "Ensure your resume passes modern ATS systems easily.",
-              icon: "✅"
-            }
-          ].map((item, i) => (
-
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 50 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              whileHover={{ scale: 1.05 }}
-              className="bg-white/70 backdrop-blur-lg p-8 rounded-2xl shadow-lg border border-white/40 hover:shadow-2xl transition duration-300"
-            >
-
-              {/* ICON */}
-              <div className="text-4xl mb-4">{item.icon}</div>
-
-              {/* TITLE */}
-              <h3 className="text-xl font-semibold mb-2 text-purple-600">
-                {item.title}
-              </h3>
-
-              {/* DESC */}
-              <p className="text-gray-600 text-sm leading-relaxed">
-                {item.desc}
-              </p>
-
-            </motion.div>
-
-          ))}
-
-        </div>
-
-      </section>
-
-      {/* ================= TESTIMONIALS ================= */}
-      <section className="py-28 px-8 bg-purple-50">
-
-        {/* TITLE */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-16"
-        >
-          <h2 className="text-4xl md:text-5xl font-bold">
-            Loved by <span className="text-purple-600">Developers</span>
-          </h2>
-
-          <p className="text-gray-500 mt-4 max-w-lg mx-auto">
-            See how candidates improved their interview performance using Hire Ready AI.
-          </p>
-        </motion.div>
-
-        {/* CARDS */}
-        <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-10">
-
-          {[
-            {
-              name: "Rahul Sharma",
-              role: "Frontend Developer",
-              review: "This platform helped me boost my confidence and crack my first interview!",
-              img: "https://i.pravatar.cc/150?img=3"
-            },
-            {
-              name: "Priya Verma",
-              role: "Software Engineer",
-              review: "AI feedback is incredibly accurate. My communication improved a lot.",
-              img: "https://i.pravatar.cc/150?img=5"
-            },
-            {
-              name: "Amit Patel",
-              role: "Full Stack Developer",
-              review: "Mock interviews feel real. It’s like practicing with a real interviewer.",
-              img: "https://i.pravatar.cc/150?img=8"
-            }
-          ].map((user, i) => (
-
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 50 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.15 }}
-              whileHover={{ scale: 1.05 }}
-              className="bg-white/70 backdrop-blur-lg p-6 rounded-2xl shadow-lg border border-white/40 hover:shadow-2xl transition duration-300"
-            >
-
-              {/* USER INFO */}
-              <div className="flex items-center gap-4 mb-4">
-                <img
-                  src={user.img}
-                  alt={user.name}
-                  className="w-12 h-12 rounded-full object-cover"
-                />
-
-                <div>
-                  <p className="font-semibold">{user.name}</p>
-                  <p className="text-sm text-gray-500">{user.role}</p>
+                <div className="mt-8 grid gap-3 sm:grid-cols-3">
+                  {trustStats.map((s) => (
+                    <div key={s.label} className="panel-card rounded-[1.35rem] border-slate-200/90 p-4 text-center shadow-[0_8px_24px_rgba(15,23,42,0.06)] sm:text-left">
+                      <p className="text-2xl font-bold text-slate-950 sm:text-3xl">{s.value}</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-900">{s.label}</p>
+                      <p className="mt-1 text-xs leading-relaxed text-slate-600">{s.hint}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {/* ⭐ RATING */}
-              <div className="text-yellow-500 mb-2 text-lg">★★★★★</div>
+              <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+                <motion.div
+                  whileHover={{ y: -6 }}
+                  className="panel-card rounded-[1.75rem] border-slate-200/90 p-5 shadow-[0_12px_36px_rgba(15,23,42,0.07)] sm:col-span-2"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-slate-800">Live Interview Snapshot</p>
+                    <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">Active</span>
+                  </div>
+                  <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                    <StatCard label="Technical" value="82" helper="out of 100" />
+                    <StatCard label="Confidence" value="78" helper="camera + answers" />
+                    <StatCard label="Focus" value="91" helper="screen attention" />
+                  </div>
+                  <div className="soft-grid mt-5 h-36 rounded-[1.5rem] border border-slate-200 bg-white p-4">
+                    <div className="flex h-full items-end gap-3">
+                      {[38, 54, 47, 72, 81, 76, 90].map((bar, index) => (
+                        <div key={index} className="flex-1 rounded-t-2xl bg-gradient-to-t from-teal-600 via-cyan-500 to-sky-300" style={{ height: `${bar}%` }} />
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
 
-              {/* REVIEW */}
-              <p className="text-gray-600 text-sm leading-relaxed">
-                “{user.review}”
+                {featureCards.slice(0, 2).map((item) => (
+                  <motion.div key={item.title} whileHover={{ y: -4 }} className="panel-card rounded-[1.5rem] border-slate-200/90 p-5 shadow-[0_10px_28px_rgba(15,23,42,0.06)]">
+                    <p className="text-sm font-semibold text-slate-900">{item.title}</p>
+                    <p className="mt-3 text-sm leading-7 text-slate-700">{item.text}</p>
+                    <p className="mt-4 text-xs font-semibold uppercase tracking-[0.28em] text-teal-700">{item.stat}</p>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="features" className="py-14 sm:py-16 lg:py-20">
+          <div className="mb-10 max-w-2xl">
+            <p className="eyebrow">Core Features</p>
+            <h3 className="mt-3 text-3xl font-bold text-slate-950 sm:text-4xl">Built for actual practice, not just a pretty demo.</h3>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {featureCards.map((item, index) => (
+              <motion.div
+                key={item.title}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.08 }}
+                className="panel-card rounded-[1.75rem] border-slate-200/90 p-6 shadow-[0_10px_28px_rgba(15,23,42,0.06)]"
+              >
+                <div className="mb-5 h-12 w-12 rounded-2xl bg-gradient-to-br from-teal-600 to-blue-600" />
+                <h4 className="text-xl font-semibold text-slate-900">{item.title}</h4>
+                <p className="mt-4 text-sm leading-7 text-slate-700">{item.text}</p>
+                <p className="mt-6 text-xs font-semibold uppercase tracking-[0.25em] text-orange-600">{item.stat}</p>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+
+        <section id="workflow" className="pb-14 sm:pb-16 lg:pb-20">
+          <div className="glass-card rounded-[2rem] px-6 py-8 shadow-[0_20px_50px_rgba(15,23,42,0.08)] sm:px-10 sm:py-10">
+            <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+              <div>
+                <p className="eyebrow">Workflow</p>
+                <h3 className="mt-3 text-3xl font-bold text-slate-950 sm:text-4xl">A clean candidate journey from first screen to final report.</h3>
+                <p className="mt-4 text-sm leading-7 text-slate-700 sm:text-base">
+                  The strongest interview-prep products reduce friction. This flow is designed so each step leads naturally into the next one.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                {workflow.map((step, index) => (
+                  <div key={step} className="panel-card flex gap-4 rounded-[1.5rem] p-5">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-sm font-semibold text-white">
+                      {index + 1}
+                    </div>
+                    <p className="text-sm leading-7 text-slate-700 sm:text-base">{step}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="project" className="pb-14 sm:pb-16 lg:pb-20">
+          <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="panel-card rounded-[1.9rem] border-slate-200/90 p-7 shadow-[0_12px_36px_rgba(15,23,42,0.06)] sm:p-8">
+              <p className="eyebrow">Project Quality</p>
+              <h3 className="mt-3 text-3xl font-bold text-slate-950">A better foundation for a strong portfolio-level product.</h3>
+              <p className="mt-5 text-sm leading-8 text-slate-700 sm:text-base">
+                The goal is not only to make the screens attractive, but to make them feel intentional, responsive, and trustworthy while preserving the core interview logic and stored analytics.
               </p>
-
-            </motion.div>
-
-          ))}
-
-        </div>
-
-      </section>
-      {/* ================= PRICING ================= */}
-      {/* ================= PRICING ================= */}
-      <section id="pricing" className="py-28 px-8 bg-gradient-to-b from-white to-purple-50">
-
-        {/* TITLE */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-16"
-        >
-          <h2 className="text-4xl md:text-5xl font-bold">
-            Simple, Transparent <span className="text-purple-600">Pricing</span>
-          </h2>
-
-          <p className="text-gray-500 mt-4">
-            Start free. Upgrade when you're ready to get serious.
-          </p>
-        </motion.div>
-
-        {/* CARDS */}
-        <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-10">
-
-          {/* ================= FREE ================= */}
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="bg-white/70 backdrop-blur-lg p-8 rounded-2xl shadow-lg border border-white/40"
-          >
-            <h3 className="text-xl font-semibold mb-2">Free</h3>
-            <p className="text-gray-500 mb-6">Best for beginners</p>
-
-            <p className="text-4xl font-bold mb-6">₹0</p>
-
-            <ul className="text-gray-600 space-y-3 mb-6 text-sm">
-              <li>✔ 3 Mock Interviews</li>
-              <li>✔ Basic Resume Builder</li>
-              <li>✔ Limited AI Feedback</li>
-              <li>❌ No Confidence Tracking</li>
-              <li>❌ No Advanced Analytics</li>
-            </ul>
-
-            <button className="w-full border py-3 rounded-xl hover:bg-gray-100 transition">
-              Get Started
-            </button>
-          </motion.div>
-
-          {/* ================= PRO (MOST POPULAR) ================= */}
-          <motion.div
-            whileHover={{ scale: 1.08 }}
-            className="relative bg-gradient-to-br from-purple-600 to-pink-500 text-white p-8 rounded-2xl shadow-2xl"
-          >
-            {/* BADGE */}
-            <div className="absolute top-0 right-0 bg-white text-purple-600 text-xs px-3 py-1 rounded-bl-xl rounded-tr-xl font-semibold">
-              MOST POPULAR
             </div>
 
-            <h3 className="text-xl font-semibold mb-2">Pro</h3>
-            <p className="opacity-80 mb-6">For serious candidates</p>
+            <div className="panel-card rounded-[1.9rem] border-slate-200/90 p-7 shadow-[0_12px_36px_rgba(15,23,42,0.06)] sm:p-8">
+              <p className="text-sm font-semibold uppercase tracking-[0.32em] text-slate-500">Ready To Start</p>
+              <p className="mt-4 text-2xl font-semibold text-slate-900">Create your account, secure it with face scan, and begin practicing today.</p>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <Link to="/signup" className="primary-btn px-6 py-3 text-center">Sign Up</Link>
+                <Link to="/login" className="secondary-btn px-6 py-3 text-center">Login</Link>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
 
-            <p className="text-4xl font-bold mb-6">₹99/mo</p>
-
-            <ul className="space-y-3 mb-6 text-sm">
-              <li>✔ Unlimited Mock Interviews</li>
-              <li>✔ AI Answer Evaluation</li>
-              <li>✔ Confidence Tracking (Face AI)</li>
-              <li>✔ Real-time Feedback</li>
-              <li>✔ ATS Resume Optimization</li>
-            </ul>
-
-            <button className="w-full bg-white text-purple-600 py-3 rounded-xl font-semibold hover:scale-105 transition">
-              Upgrade Now
-            </button>
-          </motion.div>
-
-          {/* ================= PREMIUM ================= */}
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="bg-white/70 backdrop-blur-lg p-8 rounded-2xl shadow-lg border border-white/40"
-          >
-            <h3 className="text-xl font-semibold mb-2">Premium</h3>
-            <p className="text-gray-500 mb-6">For top performers</p>
-
-            <p className="text-4xl font-bold mb-6">₹199/mo</p>
-
-            <ul className="text-gray-600 space-y-3 mb-6 text-sm">
-              <li>✔ Everything in Pro</li>
-              <li>✔ Personalized AI Coaching</li>
-              <li>✔ Detailed Performance Reports</li>
-              <li>✔ Interview Strategy Tips</li>
-              <li>✔ Priority Support</li>
-            </ul>
-
-            <button className="w-full border py-3 rounded-xl hover:bg-gray-100 transition">
-              Go Premium
-            </button>
-          </motion.div>
-
-        </div>
-
-      </section>
-      {/* ================= FOOTER ================= */}
-      <footer className="py-10 text-center text-gray-500">
-        © {new Date().getFullYear()} HireReadyAI. All rights reserved.
-      </footer>
-
+function StatCard({ label, value, helper }) {
+  return (
+    <div className="rounded-[1.25rem] border border-slate-200 bg-white p-4 shadow-sm">
+      <p className="text-sm font-medium text-slate-600">{label}</p>
+      <p className="mt-2 text-3xl font-bold text-slate-950">{value}</p>
+      <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-slate-500">{helper}</p>
     </div>
   );
 }

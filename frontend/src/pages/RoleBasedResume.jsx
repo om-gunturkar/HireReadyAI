@@ -112,8 +112,9 @@ export default function RoleBasedResume() {
       .join(" | ");
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#ecfeff,_#f8fafc_45%,_#e2e8f0)] px-4 py-10">
-      <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[360px_minmax(0,1fr)]">
+    <div className="app-shell min-h-screen">
+      <div className="page-frame py-8 sm:py-10">
+      <div className="grid w-full gap-8 lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)] xl:gap-10">
         <div className={`${cardClass} h-fit p-6`}>
           <div className="mb-6">
             <p className="mb-2 text-sm font-semibold uppercase tracking-[0.3em] text-cyan-600">
@@ -342,6 +343,7 @@ export default function RoleBasedResume() {
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

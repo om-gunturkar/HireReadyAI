@@ -119,12 +119,13 @@ export default function Settings() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-100 via-white to-pink-100 px-4">
+        <div className="app-shell min-h-screen">
+        <div className="page-frame flex min-h-[calc(100dvh-2rem)] items-center justify-center py-8 sm:py-12">
 
             <motion.div
                 initial={{ opacity: 0, y: 40 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="w-full max-w-3xl p-8 rounded-3xl bg-white/80 backdrop-blur-xl shadow-2xl border"
+                className="w-full max-w-3xl rounded-3xl border bg-white/80 p-6 shadow-2xl backdrop-blur-xl sm:p-8"
             >
 
                 {/* 🔙 BACK BUTTON */}
@@ -224,6 +225,7 @@ export default function Settings() {
                 </div>
 
             </motion.div>
+        </div>
         </div>
     );
 }

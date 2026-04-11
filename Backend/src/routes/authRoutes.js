@@ -2,8 +2,6 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
-const crypto = require("crypto");
-
 const User = require("../models/User.js");
 const { sendVerificationEmail } = require("../services/authEmailService");
 
@@ -125,56 +123,22 @@ router.post("/signup", async (req, res) => {
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  // Generate verification token
-  const verificationToken = crypto.randomBytes(32).toString("hex");
-  const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
   const user = new User({
     name,
     email,
     password: hashedPassword,
     faceDescriptor,
     faceEnrolledAt: new Date(),
-    emailVerified: false,
-    verificationToken,
-    verificationExpires,
+    emailVerified: true,
+    verificationToken: null,
+    verificationExpires: null,
   });
 
   await user.save();
 
-  // Send verification email
-  const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
-  const verificationUrl = `${backendUrl}/api/auth/verify-email/${verificationToken}`;
-  const loginUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login`;
-
-  try {
-    const emailResult = await sendVerificationEmail({
-      to: email,
-      name,
-      verificationUrl,
-      loginUrl,
-    });
-    
-    console.log("Email service result:", emailResult);
-    
-    if (!emailResult.sent) {
-      console.error("Email failed to send:", emailResult.reason);
-      return res.status(500).json({
-        message: "Signup failed: Could not send verification email. Please check your internet connection and try again.",
-        error: emailResult.reason
-      });
-    }
-  } catch (emailError) {
-    console.error("Email sending exception:", emailError);
-    return res.status(500).json({
-      message: "Signup failed: Email service error. Please try again later.",
-      error: emailError.message
-    });
-  }
-
   res.json({
-    message: "Signup successful! Please check your email and verify your account before logging in.",
-    requiresVerification: true,
+    message: "Signup successful. You can log in with your email, password, and face scan.",
+    requiresVerification: false,
   });
 });
 
@@ -342,14 +306,6 @@ router.post("/login", async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid email or password" });
-    }
-
-    // Check if email is verified
-    if (!user.emailVerified) {
-      return res.status(403).json({
-        message: "Please verify your email before logging in. Check your email for the verification link.",
-        requiresVerification: true
-      });
     }
 
     if (!Array.isArray(faceDescriptor) || faceDescriptor.length === 0) {

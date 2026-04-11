@@ -143,10 +143,12 @@ export default function ScoreAnalysis() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(15,118,110,0.16),transparent_35%),linear-gradient(135deg,#f4f8f7,#fff8ef_60%,#eef6ff)] flex items-center justify-center p-8">
-        <div className="rounded-[2rem] border border-white/70 bg-white/80 px-10 py-8 text-center shadow-[0_25px_80px_rgba(15,23,42,0.12)] backdrop-blur-xl">
-          <p className="text-sm font-semibold uppercase tracking-[0.35em] text-teal-700">Analyzing Interview</p>
-          <h1 className="mt-3 text-3xl font-bold text-slate-900">Preparing your feedback report</h1>
+      <div className="app-shell min-h-screen">
+        <div className="page-frame flex min-h-[70dvh] items-center justify-center py-12">
+          <div className="rounded-[2rem] border border-white/70 bg-white/80 px-10 py-8 text-center shadow-[0_25px_80px_rgba(15,23,42,0.12)] backdrop-blur-xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.35em] text-teal-700">Analyzing Interview</p>
+            <h1 className="mt-3 text-3xl font-bold text-slate-900">Preparing your feedback report</h1>
+          </div>
         </div>
       </div>
     );
@@ -154,16 +156,19 @@ export default function ScoreAnalysis() {
 
   if (error || !report?.scoreData) {
     return (
-      <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(15,118,110,0.16),transparent_35%),linear-gradient(135deg,#f4f8f7,#fff8ef_60%,#eef6ff)] flex items-center justify-center p-8">
-        <div className="max-w-xl rounded-[2rem] border border-white/70 bg-white/85 p-10 text-center shadow-[0_25px_80px_rgba(15,23,42,0.12)] backdrop-blur-xl">
-          <h1 className="text-3xl font-bold text-slate-900">No feedback report found</h1>
-          <p className="mt-3 text-slate-600">{error || "Complete an interview to generate a real-time feedback summary."}</p>
-          <button
-            onClick={() => navigate("/mock-interview")}
-            className="mt-8 rounded-full bg-teal-700 px-6 py-3 font-semibold text-white transition hover:bg-teal-800"
-          >
-            Start Interview
-          </button>
+      <div className="app-shell min-h-screen">
+        <div className="page-frame flex min-h-[70dvh] items-center justify-center py-12">
+          <div className="w-full max-w-xl rounded-[2rem] border border-white/70 bg-white/85 p-10 text-center shadow-[0_25px_80px_rgba(15,23,42,0.12)] backdrop-blur-xl">
+            <h1 className="text-3xl font-bold text-slate-900">No feedback report found</h1>
+            <p className="mt-3 text-slate-600">{error || "Complete an interview to generate a real-time feedback summary."}</p>
+            <button
+              type="button"
+              onClick={() => navigate("/mock-interview")}
+              className="mt-8 rounded-full bg-teal-700 px-6 py-3 font-semibold text-white transition hover:bg-teal-800"
+            >
+              Start Interview
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -197,8 +202,8 @@ export default function ScoreAnalysis() {
   const improvementInsight = getImprovementInsight({ history, scoreData, previousAttempt });
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(15,118,110,0.16),transparent_35%),radial-gradient(circle_at_bottom_right,_rgba(249,115,22,0.18),transparent_28%),linear-gradient(135deg,#f4f8f7,#fff8ef_58%,#eef6ff)] px-4 py-8 sm:px-8">
-      <div className="mx-auto max-w-7xl">
+    <div className="app-shell min-h-screen">
+      <div className="page-frame py-6 sm:py-10">
         <div className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/75 shadow-[0_25px_80px_rgba(15,23,42,0.12)] backdrop-blur-xl">
           <div className="border-b border-slate-200/70 bg-[linear-gradient(120deg,rgba(15,118,110,0.08),rgba(249,115,22,0.08),rgba(37,99,235,0.08))] px-6 py-8 sm:px-10">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">

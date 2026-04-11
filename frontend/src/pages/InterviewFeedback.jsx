@@ -12,16 +12,20 @@ export default function InterviewFeedback() {
 
   if (metricsHistory.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white flex justify-center items-center p-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-purple-700 mb-4">No Interview Data</h1>
-          <p className="text-gray-600 mb-8">Complete an interview to view feedback</p>
+      <div className="app-shell min-h-[100dvh]">
+        <div className="page-frame flex min-h-[80dvh] items-center justify-center py-10">
+        <div className="panel-card w-full max-w-md rounded-[2rem] p-8 text-center shadow-[0_20px_50px_rgba(15,23,42,0.1)] sm:p-10">
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-teal-700">Behavior report</p>
+          <h1 className="mt-3 text-2xl font-bold text-slate-900 sm:text-3xl">No interview data yet</h1>
+          <p className="mt-3 text-sm leading-7 text-slate-600">Complete a session with camera analysis to unlock emotion and focus charts.</p>
           <button
+            type="button"
             onClick={() => navigate("/mock-interview")}
-            className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+            className="primary-btn mt-8 w-full px-6 py-3 text-sm sm:w-auto"
           >
-            Start New Interview
+            Start mock interview
           </button>
+        </div>
         </div>
       </div>
     );
@@ -48,7 +52,7 @@ export default function InterviewFeedback() {
   }));
 
   // Colors for charts
-  const COLORS = ["#8B5CF6", "#EC4899", "#F59E0B", "#EF4444", "#06B6D4", "#10B981", "#6366F1"];
+  const COLORS = ["#0f766e", "#2563eb", "#ea580c", "#f97316", "#64748b", "#14b8a6", "#7c3aed"];
 
   // Calculate scores
   const overallConfidence = Math.round(parseFloat(report.averageConfidence));
@@ -57,84 +61,83 @@ export default function InterviewFeedback() {
   const composureScore = Math.max(0, 100 - (report.emotionCounts.sad + report.emotionCounts.angry + report.emotionCounts.fearful) * 2);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white p-8">
-      <button
-        onClick={() => navigate("/mock-interview")}
-        className="mb-6 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-      >
-        ← Back to Interviews
-      </button>
+    <div className="app-shell min-h-[100dvh]">
+      <div className="page-frame py-8 sm:py-10">
+        <button
+          type="button"
+          onClick={() => navigate("/mock-interview")}
+          className="secondary-btn mb-6 px-4 py-2 text-sm"
+        >
+          ← Back to setup
+        </button>
 
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-purple-700 mb-2">📊 Interview Feedback</h1>
-          <p className="text-gray-600">
-            Mode: <span className="font-semibold">{mode}</span> | Topic: <span className="font-semibold">{value}</span>
-          </p>
-          <p className="text-sm text-gray-500">Analyzed {report.totalFrames} frames</p>
-        </div>
+        <div className="glass-card rounded-[2rem] p-6 sm:p-8">
+          <div className="mb-8 border-b border-slate-200/80 pb-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-teal-700">Visual analytics</p>
+            <h1 className="mt-2 text-3xl font-bold text-slate-900 sm:text-4xl">Interview behavior feedback</h1>
+            <p className="mt-3 text-slate-600">
+              Mode: <span className="font-semibold text-slate-900">{mode}</span> · Topic: <span className="font-semibold text-slate-900">{value}</span>
+            </p>
+            <p className="mt-2 text-sm text-slate-500">Analyzed {report.totalFrames} frames from your camera stream</p>
+          </div>
 
-        {/* Score Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
           <ScoreCard
             label="Overall Confidence"
             score={overallConfidence}
-            color="bg-gradient-to-r from-purple-400 to-purple-600"
+            color="bg-gradient-to-br from-teal-500 to-teal-700"
             icon="🎯"
           />
           <ScoreCard
             label="Eye Contact"
             score={eyeContactScore}
-            color="bg-gradient-to-r from-pink-400 to-pink-600"
+            color="bg-gradient-to-br from-blue-500 to-indigo-600"
             icon="👀"
           />
           <ScoreCard
             label="Focus Level"
             score={focusScore}
-            color="bg-gradient-to-r from-blue-400 to-blue-600"
+            color="bg-gradient-to-br from-sky-500 to-cyan-600"
             icon="📍"
           />
           <ScoreCard
             label="Composure"
             score={composureScore}
-            color="bg-gradient-to-r from-green-400 to-green-600"
+            color="bg-gradient-to-br from-emerald-500 to-teal-600"
             icon="😌"
           />
         </div>
 
         {/* Charts Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          {/* Confidence Over Time */}
-          <div className="bg-white rounded-lg shadow-lg p-6 border border-purple-100">
-            <h2 className="text-lg font-semibold text-purple-700 mb-4">📈 Confidence Over Time</h2>
-            <ResponsiveContainer width="100%" height={300}>
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 mb-8">
+          <div className="panel-card rounded-[1.5rem] p-5 sm:p-6">
+            <h2 className="text-lg font-semibold text-slate-900 mb-4">Confidence over time</h2>
+            <ResponsiveContainer width="100%" height={280}>
               <LineChart data={confidenceData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E9D5FF" />
-                <XAxis dataKey="time" stroke="#9CA3AF" />
-                <YAxis stroke="#9CA3AF" domain={[0, 100]} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="time" stroke="#64748b" />
+                <YAxis stroke="#64748b" domain={[0, 100]} />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "#F3E8FF",
-                    border: "1px solid #D8B4FE",
-                    borderRadius: "8px",
+                    backgroundColor: "#f8fafc",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "12px",
                   }}
                 />
                 <Line
                   type="monotone"
                   dataKey="confidence"
-                  stroke="#8B5CF6"
+                  stroke="#0f766e"
                   strokeWidth={2}
-                  dot={{ fill: "#EA580C", r: 4 }}
+                  dot={{ fill: "#ea580c", r: 4 }}
                   isAnimationActive={false}
                 />
               </LineChart>
             </ResponsiveContainer>
           </div>
 
-          {/* Emotion Distribution */}
-          <div className="bg-white rounded-lg shadow-lg p-6 border border-purple-100">
-            <h2 className="text-lg font-semibold text-purple-700 mb-4">😊 Emotion Distribution</h2>
+          <div className="panel-card rounded-[1.5rem] p-5 sm:p-6">
+            <h2 className="text-lg font-semibold text-slate-900 mb-4">Emotion distribution</h2>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
@@ -156,28 +159,26 @@ export default function InterviewFeedback() {
             </ResponsiveContainer>
           </div>
 
-          {/* Head Movement */}
-          <div className="bg-white rounded-lg shadow-lg p-6 border border-purple-100">
-            <h2 className="text-lg font-semibold text-purple-700 mb-4">📍 Head Position Tracking</h2>
-            <ResponsiveContainer width="100%" height={300}>
+          <div className="panel-card rounded-[1.5rem] p-5 sm:p-6">
+            <h2 className="text-lg font-semibold text-slate-900 mb-4">Head position tracking</h2>
+            <ResponsiveContainer width="100%" height={280}>
               <BarChart data={headMovementData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E9D5FF" />
-                <XAxis dataKey="name" stroke="#9CA3AF" />
-                <YAxis stroke="#9CA3AF" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="name" stroke="#64748b" />
+                <YAxis stroke="#64748b" />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "#F3E8FF",
-                    border: "1px solid #D8B4FE",
+                    backgroundColor: "#f8fafc",
+                    border: "1px solid #cbd5e1",
                   }}
                 />
-                <Bar dataKey="value" fill="#8B5CF6" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="value" fill="#0f766e" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
 
-          {/* Performance Summary */}
-          <div className="bg-white rounded-lg shadow-lg p-6 border border-purple-100">
-            <h2 className="text-lg font-semibold text-purple-700 mb-4">📋 Performance Summary</h2>
+          <div className="panel-card rounded-[1.5rem] p-5 sm:p-6">
+            <h2 className="text-lg font-semibold text-slate-900 mb-4">Performance summary</h2>
             <div className="space-y-4">
               <SummaryRow label="Total Frames Analyzed" value={report.totalFrames} />
               <SummaryRow label="Dominant Emotion" value={getDominantEmotion(report.emotionCounts)} />
@@ -188,28 +189,29 @@ export default function InterviewFeedback() {
           </div>
         </div>
 
-        {/* AI Feedback Section */}
-        <div className="bg-white rounded-lg shadow-lg p-6 border border-purple-100 mb-8">
-          <h2 className="text-lg font-semibold text-purple-700 mb-4">🤖 AI Feedback</h2>
-          <div className="space-y-3 text-gray-700">
+        <div className="panel-card mb-8 rounded-[1.5rem] p-5 sm:p-6">
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">AI coaching notes</h2>
+          <div className="space-y-3 text-slate-700 text-sm leading-7">
             {generateAIFeedback(report, overallConfidence, eyeContactScore, focusScore, composureScore)}
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-4 justify-center">
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
           <button
+            type="button"
             onClick={() => navigate("/mock-interview")}
-            className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+            className="primary-btn px-6 py-3 text-sm"
           >
-            Take Another Interview
+            Take another interview
           </button>
           <button
+            type="button"
             onClick={() => window.print()}
-            className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+            className="secondary-btn px-6 py-3 text-sm"
           >
-            Print Report
+            Print report
           </button>
+        </div>
         </div>
       </div>
     </div>
@@ -230,9 +232,9 @@ function ScoreCard({ label, score, color, icon }) {
 
 function SummaryRow({ label, value }) {
   return (
-    <div className="flex justify-between items-center pb-2 border-b border-purple-100">
-      <span className="text-gray-600">{label}</span>
-      <span className="font-semibold text-purple-700">{value}</span>
+    <div className="flex justify-between items-center pb-2 border-b border-slate-200">
+      <span className="text-slate-600">{label}</span>
+      <span className="font-semibold text-teal-800">{value}</span>
     </div>
   );
 }

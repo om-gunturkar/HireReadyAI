@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import CameraFeed from "./CameraFeed";
+import CameraFeed from "../components/CameraFeed";
 import Lottie from "lottie-react";
 import { useNavigate } from "react-router-dom";
 import TopAlertBar from "../components/TopAlertBar";
@@ -1162,39 +1162,28 @@ export default function InterviewSession() {
     <>
       {/* ✅ OVERLAY */}
       {isCompleted && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/30 backdrop-blur-md"></div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" />
 
-          <div className="relative bg-white rounded-2xl shadow-2xl p-12 w-[500px] text-center animate-fadeIn">
-            <h1 className="text-3xl font-bold text-purple-700 mb-4 animate-bounce">
-              🎉 Thank You for Your Time!
+          <div className="relative w-full max-w-md rounded-[1.75rem] border border-white/60 bg-white/95 p-8 text-center shadow-[0_28px_80px_rgba(15,23,42,0.2)] backdrop-blur-xl animate-fadeIn sm:p-10">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-teal-700">Session complete</p>
+            <h1 className="mt-3 text-2xl font-bold text-slate-900 sm:text-3xl">
+              Thank you — your responses are saved
             </h1>
 
-            <p className="text-gray-600 mb-8">
-              Your interview has been successfully completed.
+            <p className="mt-3 text-sm leading-7 text-slate-600">
+              Building your score breakdown and behavioral summary. You will be redirected to the report view.
             </p>
 
-            {/* ✅ PERFECT CIRCLE */}
-            <div className="flex justify-center mb-6">
-              <div className="relative w-32 h-32">
-                <svg
-                  className="w-full h-full transform -rotate-90"
-                  viewBox="0 0 120 120"
-                >
+            <div className="mt-8 flex justify-center">
+              <div className="relative h-28 w-28 sm:h-32 sm:w-32">
+                <svg className="h-full w-full -rotate-90" viewBox="0 0 120 120" aria-hidden>
+                  <circle cx="60" cy="60" r="50" stroke="#e2e8f0" strokeWidth="10" fill="none" />
                   <circle
                     cx="60"
                     cy="60"
                     r="50"
-                    stroke="#e5e7eb"
-                    strokeWidth="10"
-                    fill="none"
-                  />
-
-                  <circle
-                    cx="60"
-                    cy="60"
-                    r="50"
-                    stroke="#7c3aed"
+                    stroke="#0f766e"
                     strokeWidth="10"
                     fill="none"
                     strokeDasharray={2 * Math.PI * 50}
@@ -1203,191 +1192,173 @@ export default function InterviewSession() {
                     style={{ transition: "stroke-dashoffset 1s linear" }}
                   />
                 </svg>
-
-                <div className="absolute inset-0 flex items-center justify-center text-xl font-bold text-purple-700">
+                <div className="absolute inset-0 flex items-center justify-center text-lg font-bold text-teal-800">
                   {completionTime}s
                 </div>
               </div>
             </div>
 
-            <p className="text-gray-500 animate-pulse">
-              Redirecting to Score Page...
-            </p>
+            <p className="mt-6 text-sm text-slate-500">Redirecting to score analysis…</p>
           </div>
         </div>
       )}
 
       {/* ✅ MAIN PAGE */}
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white flex justify-center items-center p-8">
-
+      <div className="app-shell min-h-screen">
         <AIMonitoringStatus />
         <TopAlertBar alert={topAlert} onDismiss={dismissTopAlert} />
 
-        <div className="w-full max-w-[110rem] min-h-[90vh] 
-bg-white/80 backdrop-blur-xl 
-rounded-3xl shadow-[0_20px_80px_rgba(124,58,237,0.15)] 
-border border-purple-200 p-12">
+        <div className="page-frame flex justify-center py-4 sm:py-6">
+        <div className="glass-card w-full min-h-[min(90vh,100dvh)] rounded-[1.5rem] border border-white/60 p-4 sm:rounded-[2rem] sm:p-6 lg:p-8 xl:p-10">
 
-          <h2 className="text-2xl font-semibold text-purple-700 mb-1">
-            🎯 Mock Interview
-          </h2>
+          <div className="flex flex-col gap-2 border-b border-slate-200/80 pb-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-teal-700">Live mock interview</p>
+              <h2 className="mt-1 text-xl font-bold text-slate-900 sm:text-2xl">Hire Ready AI — session room</h2>
+              <p className="mt-2 text-sm text-slate-600">
+                <span className="font-medium text-slate-800">Mode:</span> {mode || "—"} · <span className="font-medium text-slate-800">Focus:</span> {value || "—"}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 text-xs text-slate-500">
+              <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">Camera + face mesh</span>
+              <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">Speech capture</span>
+            </div>
+          </div>
 
-          <p className="text-sm text-gray-500 mb-6">
-            Mode: {mode} | Topic: {value}
-          </p>
-
-          <div className="grid grid-cols-12 gap-10 h-full">
-
-            {/* LEFT */}
-            <div className="col-span-4 flex flex-col gap-8">
-              <div className="h-80 bg-gradient-to-br from-purple-100 to-pink-100 
-border border-purple-200 rounded-3xl flex items-center justify-center 
-shadow-inner shadow-purple-200/50">
-                {robotAnimation && (
-                  <Lottie
-                    animationData={robotAnimation}
-                    loop={activeSpeaker === "system"}
-                    autoplay={activeSpeaker === "system"}
-                    style={{ width: 260, height: 260 }}
-                  />
-                )}
+          <div className="interview-live-grid mt-6 lg:mt-8">
+            <div className="order-2 flex flex-col gap-5 lg:order-1">
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">AI interviewer</p>
+                <div className="flex min-h-[200px] items-center justify-center rounded-[1.5rem] border border-teal-200/80 bg-gradient-to-br from-teal-50 via-white to-sky-50 shadow-inner sm:min-h-[240px] lg:min-h-[280px]">
+                  {robotAnimation && (
+                    <div className="flex max-h-[200px] w-full max-w-[260px] justify-center sm:max-h-[240px] sm:max-w-[280px] lg:max-h-[260px]">
+                      <Lottie
+                        animationData={robotAnimation}
+                        loop={activeSpeaker === "system"}
+                        autoplay={activeSpeaker === "system"}
+                        style={{ width: "100%", height: "100%", maxHeight: 260 }}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div>
-                <p className="text-xs font-semibold text-gray-600 mb-2">
-                  Camera Preview
-                </p>
-                <div className="h-80 bg-black/95 border border-purple-300 rounded-3xl overflow-hidden 
-shadow-[0_10px_40px_rgba(0,0,0,0.4)]">
-                  <div className="relative w-full h-full">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Camera preview</p>
+                <div className="overflow-hidden rounded-[1.5rem] border border-slate-200 shadow-[0_12px_40px_rgba(0,0,0,0.25)] ring-1 ring-slate-200/50">
+                  <div className="relative aspect-[4/3] w-full max-h-[min(50vh,420px)] min-h-[200px]">
                     <CameraFeed videoRef={videoRef} />
-                    <canvas
-                      ref={canvasRef}
-                      className="absolute top-0 left-0 w-full h-full pointer-events-none"
-                    />
+                    <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 z-20 h-full w-full" />
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* RIGHT */}
-            <div className="col-span-8 bg-gradient-to-br from-purple-50 to-white 
-border border-purple-200 rounded-2xl p-10 
-flex flex-col justify-between shadow-inner">
-
-              <div>
+            <div className="order-1 flex min-h-0 flex-col rounded-[1.5rem] border border-slate-200/90 bg-gradient-to-br from-white to-slate-50/90 p-5 shadow-inner sm:p-6 lg:p-8 lg:order-2">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <span
-                  className={`text-2xl font-bold transition-all duration-300
-    ${timeLeft <= 10 && timeLeft > 0 ? "text-red-500" : ""}
-    ${timeLeft <= 0 ? "text-green-500" : ""}
-    ${timeLeft > 10 ? "text-purple-700" : ""}
-  `}
+                  className={`text-2xl font-bold tabular-nums transition-colors duration-300 sm:text-3xl ${
+                    timeLeft <= 10 && timeLeft > 0 ? "text-red-600" : ""
+                  } ${timeLeft <= 0 ? "text-emerald-600" : ""} ${timeLeft > 10 ? "text-teal-800" : ""}`}
                 >
                   {timeLeft > 0
-                    ? `⏱ 0:${timeLeft.toString().padStart(2, "0")}`
-                    : `⏱ +${Math.abs(timeLeft).toString().padStart(2, "0")}`}
+                    ? `0:${timeLeft.toString().padStart(2, "0")}`
+                    : `+${Math.abs(timeLeft).toString().padStart(2, "0")}`}
+                  <span className="ml-2 text-sm font-semibold uppercase tracking-wider text-slate-500">timer</span>
                 </span>
+                <CandidateIdentityCard
+                  title="Verified candidate"
+                  subtitle="Login face scan"
+                  image={userFaceSnapshot}
+                  topic={value}
+                />
+              </div>
 
-                <div className="mt-4 flex justify-end">
-                  <CandidateIdentityCard
-                    title="Verified candidate"
-                    subtitle="Login face scan"
-                    image={userFaceSnapshot}
-                    topic={value}
-                  />
-                </div>
+              <p className="mt-5 text-lg font-semibold leading-relaxed text-slate-900 sm:text-xl lg:text-2xl lg:leading-snug">
+                {question}
+              </p>
 
-                <p className="text-2xl font-semibold text-purple-900 mt-6 leading-loose tracking-wide">
-                  {question}
-                </p>
-                {/* ✅ LEVEL SELECTION UI */}
-                {phase === "level" && (
-                  <div className="flex justify-center gap-6 mt-8">
-
+              {phase === "level" && (
+                <div className="mt-8">
+                  <p className="mb-3 text-sm font-medium text-slate-600">Select difficulty for this run</p>
+                  <div className="flex flex-wrap gap-3">
                     <button
+                      type="button"
                       onClick={() => chooseLevel("Easy")}
-                      className="px-6 py-2 bg-green-200 text-green-800 rounded-lg font-semibold hover:scale-105 transition"
+                      className="rounded-full bg-emerald-100 px-5 py-2.5 text-sm font-semibold text-emerald-900 ring-1 ring-emerald-200/80 transition hover:bg-emerald-200/80"
                     >
                       Easy
                     </button>
-
                     <button
+                      type="button"
                       onClick={() => chooseLevel("Moderate")}
-                      className="px-6 py-2 bg-yellow-200 text-yellow-800 rounded-lg font-semibold hover:scale-105 transition"
+                      className="rounded-full bg-amber-100 px-5 py-2.5 text-sm font-semibold text-amber-900 ring-1 ring-amber-200/80 transition hover:bg-amber-200/80"
                     >
                       Moderate
                     </button>
-
                     <button
+                      type="button"
                       onClick={() => chooseLevel("Hard")}
-                      className="px-6 py-2 bg-red-200 text-red-800 rounded-lg font-semibold hover:scale-105 transition"
+                      className="rounded-full bg-rose-100 px-5 py-2.5 text-sm font-semibold text-rose-900 ring-1 ring-rose-200/80 transition hover:bg-rose-200/80"
                     >
                       Hard
                     </button>
-
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               {phase === "interview" && (
-                <>
+                <div className="mt-6 flex flex-1 flex-col">
+                  <label className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Your answer (live transcript)</label>
                   <textarea
-                    rows="7"
-                    className="w-full bg-white/90 border border-purple-300 
-rounded-xl p-5 shadow-inner outline-none 
-focus:ring-2 focus:ring-purple-400 text-gray-800"
+                    rows={6}
+                    className="field min-h-[140px] resize-y border-slate-200/90 text-slate-800 sm:min-h-[180px]"
                     value={finalTranscript + interimTranscript}
                     onChange={(e) => setFinalTranscript(e.target.value)}
                   />
 
-                  <div className="flex justify-between items-center mt-4 gap-6">
+                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                     <button
+                      type="button"
                       onClick={stopInterview}
-                      className="px-6 py-2 bg-red-600 text-white rounded-lg"
+                      className="rounded-full bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700"
                     >
-                      Stop Interview
+                      Stop interview
                     </button>
-
-                    <button
-                      onClick={count >= MAX_QUESTIONS ? stopInterview : endAndProceed}
-                      className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-500 
-text-white rounded-xl shadow-lg hover:scale-105 transition"
-                    >
-                      {count >= MAX_QUESTIONS ? "Submit" : "Next Question"}
-                    </button>
-
-                    <div className="text-sm text-purple-600">
-                      {Math.min(count, MAX_QUESTIONS)} / {MAX_QUESTIONS}
+                    <div className="flex flex-1 flex-wrap items-center justify-end gap-3 sm:justify-end">
+                      <span className="text-sm font-semibold text-teal-800">
+                        Question {Math.min(count, MAX_QUESTIONS)} / {MAX_QUESTIONS}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={count >= MAX_QUESTIONS ? stopInterview : endAndProceed}
+                        className="primary-btn px-6 py-3 text-sm"
+                      >
+                        {count >= MAX_QUESTIONS ? "Submit" : "Next question"}
+                      </button>
                     </div>
                   </div>
-                </>
+                </div>
               )}
             </div>
-
           </div>
+
           {showWarning && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-
-              <div className="bg-white/90 backdrop-blur-xl p-8 rounded-2xl shadow-2xl w-[400px] text-center border border-purple-200">
-
-                <h2 className="text-xl font-semibold text-purple-700 mb-3">
-                  ⚠️ Action Restricted
-                </h2>
-
-                <p className="text-gray-600 mb-6">
-                  You cannot go back during the interview.
-                </p>
-
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+              <div className="w-full max-w-sm rounded-[1.5rem] border border-slate-200 bg-white/95 p-6 text-center shadow-2xl backdrop-blur-xl sm:p-8">
+                <h2 className="text-lg font-semibold text-slate-900 sm:text-xl">Navigation locked</h2>
+                <p className="mt-3 text-sm leading-7 text-slate-600">You cannot use the back button during an active interview. Continue in this tab.</p>
                 <button
+                  type="button"
                   onClick={() => setShowWarning(false)}
-                  className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-lg shadow-md hover:scale-105 transition"
+                  className="primary-btn mt-6 w-full px-6 py-2.5 text-sm sm:w-auto"
                 >
                   OK
                 </button>
-
               </div>
             </div>
           )}
+        </div>
         </div>
       </div>
     </>
@@ -1396,14 +1367,14 @@ text-white rounded-xl shadow-lg hover:scale-105 transition"
 
 function CandidateIdentityCard({ title, subtitle, image, topic }) {
   return (
-    <div className="w-full max-w-[260px] rounded-[1.5rem] border border-purple-200 bg-white/85 p-4 shadow-[0_12px_30px_rgba(124,58,237,0.12)]">
-      <p className="text-xs font-semibold uppercase tracking-[0.3em] text-purple-500">{title}</p>
+    <div className="w-full max-w-[280px] rounded-[1.35rem] border border-slate-200 bg-white/90 p-4 shadow-[0_12px_30px_rgba(15,23,42,0.08)] sm:max-w-[260px]">
+      <p className="text-xs font-semibold uppercase tracking-[0.3em] text-teal-700">{title}</p>
       <div className="mt-3 flex items-center gap-3">
-        <div className="h-16 w-16 overflow-hidden rounded-2xl border border-purple-200 bg-purple-100">
+        <div className="h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 sm:h-16 sm:w-16">
           {image ? (
             <img src={image} alt="Verified candidate" className="h-full w-full object-cover" />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold text-purple-500">No scan</div>
+            <div className="flex h-full w-full items-center justify-center px-1 text-center text-[9px] font-semibold leading-tight text-slate-500">No scan</div>
           )}
         </div>
         <div className="min-w-0">

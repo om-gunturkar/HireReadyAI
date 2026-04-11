@@ -4,58 +4,41 @@ export default function CreateResume() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-purple-50 to-purple-100 flex flex-col items-center justify-center px-6">
+    <div className="app-shell min-h-screen">
+      <div className="page-frame flex min-h-[calc(100dvh-3rem)] flex-col justify-center py-10 sm:py-14">
+        <h1 className="text-center text-3xl font-bold text-slate-900 sm:text-4xl">Create your resume</h1>
 
-      <h1 className="text-4xl font-bold text-purple-800 mb-4">
-        Create Your Resume
-      </h1>
+        <p className="mx-auto mb-10 mt-3 max-w-2xl text-center text-sm text-slate-600 sm:text-base">
+          Choose how you want to build—both paths stay inside Hire Ready AI and work with resume-based interviews.
+        </p>
 
-      <p className="text-gray-600 mb-12 text-center max-w-xl">
-        Choose how you want to build your resume
-      </p>
+        <div className="grid w-full gap-6 sm:gap-8 md:grid-cols-2 lg:gap-10">
+          <button
+            type="button"
+            onClick={() => navigate("/role-based-resume")}
+            className="flex w-full cursor-pointer flex-col rounded-[1.75rem] border border-slate-200 bg-white/90 p-8 text-left shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition hover:border-teal-200 hover:shadow-lg sm:p-10"
+          >
+            <span className="text-4xl" aria-hidden>
+              🎯
+            </span>
+            <h2 className="mt-5 text-xl font-semibold text-slate-900 sm:text-2xl">Role-based resume</h2>
+            <p className="mt-2 text-sm leading-7 text-slate-600">Upload a PDF, parse it, and generate a version tailored to your target role.</p>
+            <span className="primary-btn mt-8 inline-flex w-fit px-6 py-2.5 text-sm">Continue</span>
+          </button>
 
-      <div className="flex flex-col md:flex-row gap-10">
-
-        {/* ROLE BASED */}
-        <div
-          onClick={() => navigate("/role-based-resume")}
-          className="cursor-pointer w-80 rounded-3xl p-10 bg-white shadow-lg hover:shadow-xl transition"
-        >
-          <div className="text-5xl mb-6">🎯</div>
-
-          <h3 className="text-2xl font-semibold text-purple-800 mb-2">
-            Role-Based Resume
-          </h3>
-
-          <p className="text-gray-600 text-sm">
-            Upload resume → Generate tailored resume
-          </p>
-
-          <button className="mt-6 px-6 py-2 rounded-full bg-purple-600 text-white">
-            Continue →
+          <button
+            type="button"
+            onClick={() => navigate("/resume-templates")}
+            className="flex w-full cursor-pointer flex-col rounded-[1.75rem] border border-slate-200 bg-white/90 p-8 text-left shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition hover:border-teal-200 hover:shadow-lg sm:p-10"
+          >
+            <span className="text-4xl" aria-hidden>
+              🎨
+            </span>
+            <h2 className="mt-5 text-xl font-semibold text-slate-900 sm:text-2xl">Resume templates</h2>
+            <p className="mt-2 text-sm leading-7 text-slate-600">Pick Classic, Tech, or Creative, then edit and export from the builder.</p>
+            <span className="primary-btn mt-8 inline-flex w-fit px-6 py-2.5 text-sm">Browse templates</span>
           </button>
         </div>
-
-        {/* TEMPLATE */}
-        <div
-          onClick={() => navigate("/resume-templates")}
-          className="cursor-pointer w-80 rounded-3xl p-10 bg-white shadow-lg hover:shadow-xl transition"
-        >
-          <div className="text-5xl mb-6">🎨</div>
-
-          <h3 className="text-2xl font-semibold text-purple-800 mb-2">
-            Template Resume
-          </h3>
-
-          <p className="text-gray-600 text-sm">
-            Choose template and edit manually
-          </p>
-
-          <button className="mt-6 px-6 py-2 rounded-full bg-purple-600 text-white">
-            Browse →
-          </button>
-        </div>
-
       </div>
     </div>
   );
