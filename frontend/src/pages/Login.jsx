@@ -60,7 +60,11 @@ export default function Login() {
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.message);
+        if (data.requiresVerification) {
+          alert("Please verify your email before logging in. Check your email for the verification link.");
+        } else {
+          alert(data.message);
+        }
         return;
       }
 

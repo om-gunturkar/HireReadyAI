@@ -2,8 +2,10 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
+const crypto = require("crypto");
 
 const User = require("../models/User.js");
+const { sendVerificationEmail } = require("../services/authEmailService");
 
 const router = express.Router();
 
@@ -59,6 +61,54 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 /* ==============================
+   🧪 TEST EMAIL ENDPOINT
+============================== */
+router.post("/test-email", async (req, res) => {
+  try {
+    const { testEmail } = req.body;
+    
+    if (!testEmail) {
+      return res.status(400).json({ message: "Please provide testEmail in request body" });
+    }
+
+    console.log("\n========== TESTING EMAIL CONFIGURATION ==========");
+    console.log("Test email to:", testEmail);
+    
+    const result = await sendVerificationEmail({
+      to: testEmail,
+      name: "Test User",
+      verificationUrl: "http://localhost:5000/api/auth/verify-email/test-token-123",
+      loginUrl: "http://localhost:5173/login",
+    });
+
+    console.log("Email test result:", result);
+    console.log("==================================================\n");
+
+    if (result.sent) {
+      res.json({
+        success: true,
+        message: "✅ Test email sent successfully!",
+        messageId: result.messageId
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: "❌ Test email failed",
+        reason: result.reason,
+        error: result.error
+      });
+    }
+  } catch (error) {
+    console.error("Test email endpoint error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Test failed",
+      error: error.message
+    });
+  }
+});
+
+/* ==============================
    🚀 SIGNUP
 ============================== */
 router.post("/signup", async (req, res) => {
@@ -75,20 +125,206 @@ router.post("/signup", async (req, res) => {
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
+  // Generate verification token
+  const verificationToken = crypto.randomBytes(32).toString("hex");
+  const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
   const user = new User({
     name,
     email,
     password: hashedPassword,
     faceDescriptor,
     faceEnrolledAt: new Date(),
-    emailVerified: true,
+    emailVerified: false,
+    verificationToken,
+    verificationExpires,
   });
 
   await user.save();
 
+  // Send verification email
+  const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+  const verificationUrl = `${backendUrl}/api/auth/verify-email/${verificationToken}`;
+  const loginUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login`;
+
+  try {
+    const emailResult = await sendVerificationEmail({
+      to: email,
+      name,
+      verificationUrl,
+      loginUrl,
+    });
+    
+    console.log("Email service result:", emailResult);
+    
+    if (!emailResult.sent) {
+      console.error("Email failed to send:", emailResult.reason);
+      return res.status(500).json({
+        message: "Signup failed: Could not send verification email. Please check your internet connection and try again.",
+        error: emailResult.reason
+      });
+    }
+  } catch (emailError) {
+    console.error("Email sending exception:", emailError);
+    return res.status(500).json({
+      message: "Signup failed: Email service error. Please try again later.",
+      error: emailError.message
+    });
+  }
+
   res.json({
-    message: "Signup successful. You can log in with password and face scan.",
+    message: "Signup successful! Please check your email and verify your account before logging in.",
+    requiresVerification: true,
   });
+});
+
+/* ==============================
+   ✅ VERIFY EMAIL
+============================== */
+router.get("/verify-email/:token", async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    const user = await User.findOne({
+      verificationToken: token,
+      verificationExpires: { $gt: new Date() },
+    });
+
+    if (!user) {
+      return res.status(400).send(`
+        <html>
+          <head>
+            <title>Email Verification Failed</title>
+            <style>
+              body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f5f5f5; }
+              .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+              .btn { display: inline-block; padding: 12px 24px; background: #7c3aed; color: white; text-decoration: none; border-radius: 5px; margin: 10px; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h2>Verification Link Expired or Invalid</h2>
+              <p>The verification link is invalid or has expired. Please request a new verification email.</p>
+              <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/login" class="btn">Go to Login</a>
+            </div>
+          </body>
+        </html>
+      `);
+    }
+
+    res.send(`
+      <html>
+        <head>
+          <title>Email Verification - Hire Ready AI</title>
+          <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f5f5f5; }
+            .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .btn { display: inline-block; padding: 12px 24px; background: #7c3aed; color: white; text-decoration: none; border-radius: 5px; margin: 10px; cursor: pointer; border: none; font-size: 14px; }
+            .login-link { background: #10b981; }
+            .login-link:disabled { background: #ccc; cursor: not-allowed; opacity: 0.6; }
+            .hidden { display: none; }
+            .loading { opacity: 0.6; pointer-events: none; }
+            .message { margin: 15px 0; }
+          </style>
+          <script>
+            async function verifyEmail() {
+              const verifyBtn = document.getElementById('verifyBtn');
+              const status = document.getElementById('status');
+              
+              verifyBtn.classList.add('loading');
+              verifyBtn.textContent = 'Verifying...';
+              
+              try {
+                const response = await fetch('/api/auth/confirm-verification/${token}', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                  verifyBtn.classList.add('hidden');
+                  document.getElementById('loginBtn').disabled = false;
+                  document.getElementById('loginBtn').style.opacity = '1';
+                  status.innerHTML = '<div class="message" style="color: #10b981; font-weight: bold;">✓ Email verified successfully!</div>';
+                  setTimeout(() => {
+                    window.location.href = '${process.env.FRONTEND_URL || 'http://localhost:5173'}/login';
+                  }, 2000);
+                } else {
+                  status.innerHTML = '<div class="message" style="color: #dc2626; font-weight: bold;">❌ Verification failed: ' + (data.message || 'Unknown error') + '</div>';
+                  verifyBtn.classList.remove('loading');
+                  verifyBtn.textContent = 'Try Again';
+                }
+              } catch (error) {
+                console.error('Error:', error);
+                status.innerHTML = '<div class="message" style="color: #dc2626;">❌ Error verifying email. Please try again.</div>';
+                verifyBtn.classList.remove('loading');
+                verifyBtn.textContent = 'Try Again';
+              }
+            }
+            
+            function goToLogin() {
+              window.location.href = '${process.env.FRONTEND_URL || 'http://localhost:5173'}/login';
+            }
+          </script>
+        </head>
+        <body>
+          <div class="container">
+            <h2>Welcome to Hire Ready AI, ${user.name}!</h2>
+            <p>Your email has been successfully registered.</p>
+            <div id="status">
+              <p>Please confirm this is you by clicking the button below to verify your email.</p>
+            </div>
+            <button id="verifyBtn" onclick="verifyEmail()" class="btn">It's me - Verify Email</button>
+            <button id="loginBtn" onclick="goToLogin()" class="btn login-link" disabled style="display: none;">Continue to Login</button>
+          </div>
+        </body>
+      </html>
+    `);
+  } catch (error) {
+    res.status(500).send(`
+      <html>
+        <head><title>Error</title></head>
+        <body><h2>Something went wrong. Please try again.</h2></body>
+      </html>
+    `);
+  }
+});
+
+/* ==============================
+   ✅ CONFIRM EMAIL VERIFICATION (API)
+============================== */
+router.post("/confirm-verification/:token", async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    const user = await User.findOne({
+      verificationToken: token,
+      verificationExpires: { $gt: new Date() },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        message: "Verification link is invalid or has expired. Please sign up again.",
+      });
+    }
+
+    // Mark email as verified
+    user.emailVerified = true;
+    user.verificationToken = null;
+    user.verificationExpires = null;
+    await user.save();
+
+    return res.json({
+      message: "Email verified successfully! You can now log in.",
+      success: true,
+    });
+  } catch (error) {
+    console.error("Verification error:", error);
+    res.status(500).json({
+      message: "Error verifying email. Please try again.",
+    });
+  }
 });
 
 /* ==============================
@@ -106,6 +342,14 @@ router.post("/login", async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    // Check if email is verified
+    if (!user.emailVerified) {
+      return res.status(403).json({
+        message: "Please verify your email before logging in. Check your email for the verification link.",
+        requiresVerification: true
+      });
     }
 
     if (!Array.isArray(faceDescriptor) || faceDescriptor.length === 0) {

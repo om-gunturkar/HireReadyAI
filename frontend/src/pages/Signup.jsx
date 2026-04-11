@@ -59,9 +59,11 @@ export default function Signup() {
         return;
       }
 
-      alert("Signup successful. You can now log in with your password and face scan.");
+      // Show verification popup instead of immediate navigation
+      alert("Signup successful! Please check your email and verify your account before logging in.");
 
-      navigate("/login");
+      // Don't navigate to login immediately - user needs to verify email first
+      // navigate("/login");
     } catch (error) {
       alert("Something went wrong");
     } finally {
