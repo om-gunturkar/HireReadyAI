@@ -13,6 +13,7 @@ import robotAnimation from "../assets/robot.json";
 
 
 export default function InterviewSession() {
+
   const [showWarning, setShowWarning] = useState(false);
   const location = useLocation();
   const state = location.state || {};
@@ -57,7 +58,8 @@ export default function InterviewSession() {
   const lastHeadPosRef = useRef("forward");
   const isProcessingRef = useRef(false);
   const selectedVoiceRef = useRef(null);
-
+  const faceViolationRef = useRef(0);
+  const multipleViolationRef = useRef(0);
   const alertStateRef = useRef({
     faceNotDetected: false,
     faceNotDetectedStart: null,
@@ -170,8 +172,49 @@ export default function InterviewSession() {
                 videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA
               ) {
                 const metrics = await analyzeFace(videoRef.current);
+                const now = Date.now();
+                // ===== FACE NOT DETECTED (5s TERMINATION) =====
+                if (!metrics || !metrics.faceDetected) {
+
+                  if (!alertStateRef.current.faceNotDetectedStart) {
+                    alertStateRef.current.faceNotDetectedStart = now;
+                  } else if (now - alertStateRef.current.faceNotDetectedStart > 5000) {
+
+                    setTopAlert({
+                      id: "no-face-terminate",
+                      type: "error",
+                      message: "❌ Interview terminated: Face not visible for 5 seconds.",
+                    });
+
+                    setTimeout(() => {
+                      stopInterview();
+                    }, 1500);
+                  }
+
+                } else {
+                  // ✅ reset when face comes back
+                  alertStateRef.current.faceNotDetectedStart = null;
+                }
                 if (metrics) {
-                  const now = Date.now();
+                  // ===== CAMERA OFF DETECTION =====
+                  if (!videoRef.current?.srcObject) {
+                    if (!alertStateRef.current.cameraOffStart) {
+                      alertStateRef.current.cameraOffStart = now;
+                    } else if (now - alertStateRef.current.cameraOffStart > 5000) {
+                      setTopAlert({
+                        id: "camera-off",
+                        type: "error",
+                        message: "❌ Interview terminated: Camera turned off for too long.",
+                      });
+
+                      setTimeout(() => {
+                        stopInterview();
+                      }, 1500);
+                    }
+                  } else {
+                    // reset if camera comes back
+                    alertStateRef.current.cameraOffStart = null;
+                  }
 
                   // ===== FACE VISIBILITY MONITORING =====
                   if (metrics.faceDetected) {
@@ -213,16 +256,31 @@ export default function InterviewSession() {
                         now - alertStateRef.current.faceNotDetectedStart > 3000
                       ) {
                         if (!alertStateRef.current.faceNotDetected) {
-                          // State transition: face missing for 3s
                           alertStateRef.current.faceNotDetected = true;
+
+                          faceViolationRef.current += 1;
+
                           const alertObj = {
                             id: "no-face",
                             type: "warning",
-                            message:
-                              "Your face is not clearly visible. Please adjust your position.",
+                            message: "Your face is not clearly visible. Please adjust your position.",
                           };
+
                           if (shouldShow(alertObj)) {
                             setTopAlert(alertObj);
+                          }
+
+                          // 🔥 TERMINATE AFTER 3 TIMES
+                          if (faceViolationRef.current >= 3) {
+                            setTopAlert({
+                              id: "terminated",
+                              type: "error",
+                              message: "❌ Interview terminated: Face not detected multiple times.",
+                            });
+
+                            setTimeout(() => {
+                              stopInterview();
+                            }, 1500);
                           }
                         }
                       }
@@ -295,16 +353,31 @@ export default function InterviewSession() {
                   // ===== MULTIPLE FACE DETECTION =====
                   if (metrics.multiplePersons) {
                     if (!alertStateRef.current.multiplePersons) {
-                      // State transition: multiple faces detected
                       alertStateRef.current.multiplePersons = true;
+
+                      multipleViolationRef.current += 1;
+
                       const alertObj = {
                         id: "multiple-face",
                         type: "warning",
-                        message:
-                          "Multiple people detected. Please ensure you are alone during the interview.",
+                        message: "Multiple people detected. Please ensure you are alone.",
                       };
+
                       if (shouldShow(alertObj)) {
                         setTopAlert(alertObj);
+                      }
+
+                      // 🔥 TERMINATE AFTER 3 TIMES
+                      if (multipleViolationRef.current >= 3) {
+                        setTopAlert({
+                          id: "terminated",
+                          type: "error",
+                          message: "❌ Interview terminated: Multiple people detected.",
+                        });
+
+                        setTimeout(() => {
+                          stopInterview();
+                        }, 1500);
                       }
                     }
                   } else {
@@ -462,7 +535,7 @@ export default function InterviewSession() {
         setTopAlert({
           id: "window-blur",
           type: "warning",
-          message: "⚠️ Focus lost. Please return to the interview.",
+          message: "Focus lost. Please return to the interview.",
         });
       }
     };
@@ -669,9 +742,52 @@ export default function InterviewSession() {
   }, [phase]);
   /* ---------------- LEVEL SELECTION ---------------- */
   const chooseLevel = async (lvl) => {
+
+    // ✅ 1. CAMERA CHECK (your original)
+    if (!videoRef.current || !videoRef.current.srcObject) {
+      setTopAlert({
+        id: "camera-required",
+        type: "error",
+        message: "❌ Camera is required to start the interview.",
+      });
+      return;
+    }
+
+    // ✅ 2. WAIT FOR CAMERA READY (NEW - important)
+    if (videoRef.current.readyState !== 4) {
+      setTopAlert({
+        id: "camera-loading",
+        type: "warning",
+        message: "⏳ Camera is still loading. Please wait...",
+      });
+      return;
+    }
+
+    // ✅ 3. FACE DETECTION (YOUR REQUIREMENT 🔥)
+    const metrics = await analyzeFace(videoRef.current);
+
+    if (!metrics || !metrics.faceDetected) {
+      setTopAlert({
+        id: "face-required",
+        type: "error",
+        message: "❌ Face not detected. Please sit properly in front of camera.",
+      });
+      return;
+    }
+
+    // ✅ 4. MULTIPLE PERSON CHECK (BONUS 🔥)
+    if (metrics.multiplePersons) {
+      setTopAlert({
+        id: "multiple-person",
+        type: "error",
+        message: "❌ Multiple people detected. Only one person allowed.",
+      });
+      return;
+    }
+
+    // ✅ 5. YOUR ORIGINAL CODE CONTINUES (UNCHANGED)
     setLevel(lvl);
     levelRef.current = lvl;
-
 
     try {
       const session = await startInterviewSession({
@@ -1223,156 +1339,155 @@ export default function InterviewSession() {
         <TopAlertBar alert={topAlert} onDismiss={dismissTopAlert} />
 
         <div className="page-frame flex justify-center py-4 sm:py-6">
-        <div className="glass-card w-full min-h-[min(90vh,100dvh)] rounded-[1.5rem] border border-white/60 p-4 sm:rounded-[2rem] sm:p-6 lg:p-8 xl:p-10">
+          <div className="glass-card w-full min-h-[min(90vh,100dvh)] rounded-[1.5rem] border border-white/60 p-4 sm:rounded-[2rem] sm:p-6 lg:p-8 xl:p-10">
 
-          <div className="flex flex-col gap-2 border-b border-slate-200/80 pb-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-teal-700">Live mock interview</p>
-              <h2 className="mt-1 text-xl font-bold text-slate-900 sm:text-2xl">Hire Ready AI — session room</h2>
-              <p className="mt-2 text-sm text-slate-600">
-                <span className="font-medium text-slate-800">Mode:</span> {mode || "—"} · <span className="font-medium text-slate-800">Focus:</span> {value || "—"}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2 text-xs text-slate-500">
-              <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">Camera + face mesh</span>
-              <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">Speech capture</span>
-            </div>
-          </div>
-
-          <div className="interview-live-grid mt-6 lg:mt-8">
-            <div className="order-2 flex flex-col gap-5 lg:order-1">
+            <div className="flex flex-col gap-2 border-b border-slate-200/80 pb-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">AI interviewer</p>
-                <div className="flex min-h-[200px] items-center justify-center rounded-[1.5rem] border border-teal-200/80 bg-gradient-to-br from-teal-50 via-white to-sky-50 shadow-inner sm:min-h-[240px] lg:min-h-[280px]">
-                  {robotAnimation && (
-                    <div className="flex max-h-[200px] w-full max-w-[260px] justify-center sm:max-h-[240px] sm:max-w-[280px] lg:max-h-[260px]">
-                      <Lottie
-                        animationData={robotAnimation}
-                        loop={activeSpeaker === "system"}
-                        autoplay={activeSpeaker === "system"}
-                        style={{ width: "100%", height: "100%", maxHeight: 260 }}
-                      />
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-teal-700">Live mock interview</p>
+                <h2 className="mt-1 text-xl font-bold text-slate-900 sm:text-2xl">Hire Ready AI — session room</h2>
+                <p className="mt-2 text-sm text-slate-600">
+                  <span className="font-medium text-slate-800">Mode:</span> {mode || "—"} · <span className="font-medium text-slate-800">Focus:</span> {value || "—"}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs text-slate-500">
+                <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">Camera + face mesh</span>
+                <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">Speech capture</span>
+              </div>
+            </div>
+
+            <div className="interview-live-grid mt-6 lg:mt-8">
+              <div className="order-2 flex flex-col gap-5 lg:order-1">
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">AI interviewer</p>
+                  <div className="flex min-h-[200px] items-center justify-center rounded-[1.5rem] border border-teal-200/80 bg-gradient-to-br from-teal-50 via-white to-sky-50 shadow-inner sm:min-h-[240px] lg:min-h-[280px]">
+                    {robotAnimation && (
+                      <div className="flex max-h-[200px] w-full max-w-[260px] justify-center sm:max-h-[240px] sm:max-w-[280px] lg:max-h-[260px]">
+                        <Lottie
+                          animationData={robotAnimation}
+                          loop={activeSpeaker === "system"}
+                          autoplay={activeSpeaker === "system"}
+                          style={{ width: "100%", height: "100%", maxHeight: 260 }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Camera preview</p>
+                  <div className="overflow-hidden rounded-[1.5rem] border border-slate-200 shadow-[0_12px_40px_rgba(0,0,0,0.25)] ring-1 ring-slate-200/50">
+                    <div className="relative aspect-[4/3] w-full max-h-[min(50vh,420px)] min-h-[200px]">
+                      <CameraFeed videoRef={videoRef} />
+                      <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 z-20 h-full w-full" />
                     </div>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Camera preview</p>
-                <div className="overflow-hidden rounded-[1.5rem] border border-slate-200 shadow-[0_12px_40px_rgba(0,0,0,0.25)] ring-1 ring-slate-200/50">
-                  <div className="relative aspect-[4/3] w-full max-h-[min(50vh,420px)] min-h-[200px]">
-                    <CameraFeed videoRef={videoRef} />
-                    <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 z-20 h-full w-full" />
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="order-1 flex min-h-0 flex-col rounded-[1.5rem] border border-slate-200/90 bg-gradient-to-br from-white to-slate-50/90 p-5 shadow-inner sm:p-6 lg:p-8 lg:order-2">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <span
-                  className={`text-2xl font-bold tabular-nums transition-colors duration-300 sm:text-3xl ${
-                    timeLeft <= 10 && timeLeft > 0 ? "text-red-600" : ""
-                  } ${timeLeft <= 0 ? "text-emerald-600" : ""} ${timeLeft > 10 ? "text-teal-800" : ""}`}
-                >
-                  {timeLeft > 0
-                    ? `0:${timeLeft.toString().padStart(2, "0")}`
-                    : `+${Math.abs(timeLeft).toString().padStart(2, "0")}`}
-                  <span className="ml-2 text-sm font-semibold uppercase tracking-wider text-slate-500">timer</span>
-                </span>
-                <CandidateIdentityCard
-                  title="Verified candidate"
-                  subtitle="Login face scan"
-                  image={userFaceSnapshot}
-                  topic={value}
-                />
-              </div>
-
-              <p className="mt-5 text-lg font-semibold leading-relaxed text-slate-900 sm:text-xl lg:text-2xl lg:leading-snug">
-                {question}
-              </p>
-
-              {phase === "level" && (
-                <div className="mt-8">
-                  <p className="mb-3 text-sm font-medium text-slate-600">Select difficulty for this run</p>
-                  <div className="flex flex-wrap gap-3">
-                    <button
-                      type="button"
-                      onClick={() => chooseLevel("Easy")}
-                      className="rounded-full bg-emerald-100 px-5 py-2.5 text-sm font-semibold text-emerald-900 ring-1 ring-emerald-200/80 transition hover:bg-emerald-200/80"
-                    >
-                      Easy
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => chooseLevel("Moderate")}
-                      className="rounded-full bg-amber-100 px-5 py-2.5 text-sm font-semibold text-amber-900 ring-1 ring-amber-200/80 transition hover:bg-amber-200/80"
-                    >
-                      Moderate
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => chooseLevel("Hard")}
-                      className="rounded-full bg-rose-100 px-5 py-2.5 text-sm font-semibold text-rose-900 ring-1 ring-rose-200/80 transition hover:bg-rose-200/80"
-                    >
-                      Hard
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {phase === "interview" && (
-                <div className="mt-6 flex flex-1 flex-col">
-                  <label className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Your answer (live transcript)</label>
-                  <textarea
-                    rows={6}
-                    className="field min-h-[140px] resize-y border-slate-200/90 text-slate-800 sm:min-h-[180px]"
-                    value={finalTranscript + interimTranscript}
-                    onChange={(e) => setFinalTranscript(e.target.value)}
+              <div className="order-1 flex min-h-0 flex-col rounded-[1.5rem] border border-slate-200/90 bg-gradient-to-br from-white to-slate-50/90 p-5 shadow-inner sm:p-6 lg:p-8 lg:order-2">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <span
+                    className={`text-2xl font-bold tabular-nums transition-colors duration-300 sm:text-3xl ${timeLeft <= 10 && timeLeft > 0 ? "text-red-600" : ""
+                      } ${timeLeft <= 0 ? "text-emerald-600" : ""} ${timeLeft > 10 ? "text-teal-800" : ""}`}
+                  >
+                    {timeLeft > 0
+                      ? `0:${timeLeft.toString().padStart(2, "0")}`
+                      : `+${Math.abs(timeLeft).toString().padStart(2, "0")}`}
+                    <span className="ml-2 text-sm font-semibold uppercase tracking-wider text-slate-500">timer</span>
+                  </span>
+                  <CandidateIdentityCard
+                    title="Verified candidate"
+                    subtitle="Login face scan"
+                    image={userFaceSnapshot}
+                    topic={value}
                   />
+                </div>
 
-                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                    <button
-                      type="button"
-                      onClick={stopInterview}
-                      className="rounded-full bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700"
-                    >
-                      Stop interview
-                    </button>
-                    <div className="flex flex-1 flex-wrap items-center justify-end gap-3 sm:justify-end">
-                      <span className="text-sm font-semibold text-teal-800">
-                        Question {Math.min(count, MAX_QUESTIONS)} / {MAX_QUESTIONS}
-                      </span>
+                <p className="mt-5 text-lg font-semibold leading-relaxed text-slate-900 sm:text-xl lg:text-2xl lg:leading-snug">
+                  {question}
+                </p>
+
+                {phase === "level" && (
+                  <div className="mt-8">
+                    <p className="mb-3 text-sm font-medium text-slate-600">Select difficulty for this run</p>
+                    <div className="flex flex-wrap gap-3">
                       <button
                         type="button"
-                        onClick={count >= MAX_QUESTIONS ? stopInterview : endAndProceed}
-                        className="primary-btn px-6 py-3 text-sm"
+                        onClick={() => chooseLevel("Easy")}
+                        className="rounded-full bg-emerald-100 px-5 py-2.5 text-sm font-semibold text-emerald-900 ring-1 ring-emerald-200/80 transition hover:bg-emerald-200/80"
                       >
-                        {count >= MAX_QUESTIONS ? "Submit" : "Next question"}
+                        Easy
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => chooseLevel("Moderate")}
+                        className="rounded-full bg-amber-100 px-5 py-2.5 text-sm font-semibold text-amber-900 ring-1 ring-amber-200/80 transition hover:bg-amber-200/80"
+                      >
+                        Moderate
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => chooseLevel("Hard")}
+                        className="rounded-full bg-rose-100 px-5 py-2.5 text-sm font-semibold text-rose-900 ring-1 ring-rose-200/80 transition hover:bg-rose-200/80"
+                      >
+                        Hard
                       </button>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
-          </div>
+                )}
 
-          {showWarning && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
-              <div className="w-full max-w-sm rounded-[1.5rem] border border-slate-200 bg-white/95 p-6 text-center shadow-2xl backdrop-blur-xl sm:p-8">
-                <h2 className="text-lg font-semibold text-slate-900 sm:text-xl">Navigation locked</h2>
-                <p className="mt-3 text-sm leading-7 text-slate-600">You cannot use the back button during an active interview. Continue in this tab.</p>
-                <button
-                  type="button"
-                  onClick={() => setShowWarning(false)}
-                  className="primary-btn mt-6 w-full px-6 py-2.5 text-sm sm:w-auto"
-                >
-                  OK
-                </button>
+                {phase === "interview" && (
+                  <div className="mt-6 flex flex-1 flex-col">
+                    <label className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Your answer (live transcript)</label>
+                    <textarea
+                      rows={6}
+                      className="field min-h-[140px] resize-y border-slate-200/90 text-slate-800 sm:min-h-[180px]"
+                      value={finalTranscript + interimTranscript}
+                      onChange={(e) => setFinalTranscript(e.target.value)}
+                    />
+
+                    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                      <button
+                        type="button"
+                        onClick={stopInterview}
+                        className="rounded-full bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700"
+                      >
+                        Stop interview
+                      </button>
+                      <div className="flex flex-1 flex-wrap items-center justify-end gap-3 sm:justify-end">
+                        <span className="text-sm font-semibold text-teal-800">
+                          Question {Math.min(count, MAX_QUESTIONS)} / {MAX_QUESTIONS}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={count >= MAX_QUESTIONS ? stopInterview : endAndProceed}
+                          className="primary-btn px-6 py-3 text-sm"
+                        >
+                          {count >= MAX_QUESTIONS ? "Submit" : "Next question"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-          )}
-        </div>
+
+            {showWarning && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+                <div className="w-full max-w-sm rounded-[1.5rem] border border-slate-200 bg-white/95 p-6 text-center shadow-2xl backdrop-blur-xl sm:p-8">
+                  <h2 className="text-lg font-semibold text-slate-900 sm:text-xl">Navigation locked</h2>
+                  <p className="mt-3 text-sm leading-7 text-slate-600">You cannot use the back button during an active interview. Continue in this tab.</p>
+                  <button
+                    type="button"
+                    onClick={() => setShowWarning(false)}
+                    className="primary-btn mt-6 w-full px-6 py-2.5 text-sm sm:w-auto"
+                  >
+                    OK
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </>

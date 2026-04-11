@@ -82,7 +82,7 @@ export default function Home() {
   return (
     <div className="app-shell">
       <div className="page-frame">
-        <nav className="glass-card mt-2 flex flex-wrap items-center justify-between gap-3 rounded-[1.75rem] px-4 py-4 sm:px-6">
+        <nav className="glass-card relative mt-2 flex flex-wrap items-center justify-between overflow-visible gap-3 rounded-[1.75rem] px-4 py-4 sm:px-6 z-50">
           <div className="min-w-0">
             <p className="eyebrow">Candidate Dashboard</p>
             <h1 className="mt-1 text-xl font-semibold text-slate-950 sm:text-2xl">Hire Ready AI</h1>
@@ -108,7 +108,7 @@ export default function Home() {
               </button>
 
               {open && (
-                <div className="panel-card absolute right-0 z-30 mt-3 w-56 rounded-[1.25rem] p-2 shadow-lg">
+                <div className="panel-card absolute right-0 z-50 mt-3 w-56 rounded-[1.25rem] p-2 shadow-lg">
                   <button type="button" onClick={() => { setOpen(false); navigate("/settings"); }} className="w-full rounded-xl px-4 py-2 text-left text-sm transition hover:bg-slate-50">
                     Settings
                   </button>

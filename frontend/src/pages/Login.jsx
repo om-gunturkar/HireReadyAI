@@ -18,6 +18,14 @@ export default function Login() {
   const videoRef = useRef(null);
   const navigate = useNavigate();
 
+  const isValidGmail = (email) => {
+    return /^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(email);
+  };
+
+  const isStrongPassword = (password) => {
+    return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/.test(password);
+  };
+
   useEffect(() => {
     loadFaceModels().catch(() => setFaceStatus("Unable to load face scanner"));
   }, []);
@@ -39,6 +47,16 @@ export default function Login() {
   };
 
   const handleLogin = async (e) => {
+    if (!isValidGmail(email)) {
+      alert("Please enter a valid Gmail address");
+      return;
+    }
+
+    if (!isStrongPassword(password)) {
+      alert("Password must be at least 8 characters and include uppercase, lowercase, number, and special character");
+      return;
+    }
+
     e.preventDefault();
     if (!faceDescriptor.length) {
       alert("Please scan your face before logging in.");

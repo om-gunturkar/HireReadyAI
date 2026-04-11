@@ -13,6 +13,8 @@ import CreateResume from "./pages/CreateResume";
 import RoleBasedResume from "./pages/RoleBasedResume";
 import ScoreAnalysis from "./pages/ScoreAnalysis";
 import Settings from "./pages/Settings";
+import Rules from "./pages/Rules";
+
 
 
 function App() {
@@ -32,6 +34,7 @@ function App() {
 
         {/* Mock Interview */}
         <Route path="/mock-interview" element={<InterviewSetup />} />
+        <Route path="/rules" element={<Rules />} />
         <Route path="/mock-interview/session" element={<InterviewSession />} />
         <Route path="/mock-interview/feedback" element={<InterviewFeedback />} />
 

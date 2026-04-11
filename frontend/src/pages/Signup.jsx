@@ -15,6 +15,7 @@ export default function Signup() {
   const [scanning, setScanning] = useState(false);
   const videoRef = useRef(null);
   const navigate = useNavigate();
+  const [error, setError] = useState("");
 
   useEffect(() => {
     loadFaceModels().catch(() => setFaceStatus("Unable to load face scanner"));
@@ -33,11 +34,28 @@ export default function Signup() {
       setScanning(false);
     }
   };
+  const isValidGmail = (email) => {
+    return /^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(email);
+  };
 
+  const isStrongPassword = (password) => {
+    return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/.test(password);
+  };
   const handleSignup = async (e) => {
     e.preventDefault();
+    setError("");
+    if (!isValidGmail(email)) {
+      setError("Please enter a valid Gmail address");
+      return;
+    }
+
+    if (!isStrongPassword(password)) {
+      setError("Password must be at least 8 characters and include uppercase, lowercase, number, and special character");
+      return;
+    }
+
     if (!faceDescriptor.length) {
-      alert("Please scan your face before signing up.");
+      setError("Please scan your face before signing up.");
       return;
     }
 
@@ -165,7 +183,11 @@ export default function Signup() {
                   </div>
                 </div>
               </div>
-
+              {error && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                  {error}
+                </div>
+              )}
               <button
                 type="submit"
                 disabled={submitting}

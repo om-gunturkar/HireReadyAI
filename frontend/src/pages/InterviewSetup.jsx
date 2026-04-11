@@ -144,7 +144,7 @@ export default function InterviewSetup() {
                 onClick={() => {
                   if (mode === "resume" && !resumeData) return alert("Parse resume first");
 
-                  navigate("/mock-interview/session", {
+                  navigate("/rules", {
                     state: {
                       mode,
                       value: selectedValue,
