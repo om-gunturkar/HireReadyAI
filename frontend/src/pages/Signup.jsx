@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
+
 import { Link, useNavigate } from "react-router-dom";
 import CameraFeed from "./CameraFeed";
 import { captureFaceDescriptor, loadFaceModels } from "../services/facialAnalysisService";
@@ -72,62 +74,91 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center
-    bg-gradient-to-br from-purple-50 via-purple-100 to-white">
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
 
-      <div className="w-full max-w-md bg-white rounded-2xl
-      shadow-xl p-8 animate-fadeIn">
+      {/* 🔥 BACKGROUND IMAGE */}
+      <div
+        className="absolute inset-0 bg-cover bg-center z-0"
+        style={{
+          backgroundImage:
+            "url('https://images.unsplash.com/photo-1557683316-973673baf926?q=80&w=1920')",
+        }}
+      ></div>
 
-        <h2 className="text-3xl font-bold text-center mb-2 text-purple-700">
-          Create Account
+      {/* 🔥 DARK OVERLAY */}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-10"></div>
+
+      {/* 🔥 CARD */}
+      <motion.div
+        initial={{ opacity: 0, y: 40, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.5 }}
+        className="relative z-30 w-full max-w-lg p-10
+      bg-white/80 backdrop-blur-xl
+      border border-white/30
+      rounded-3xl shadow-2xl"
+      >
+
+        {/* TITLE */}
+        <h2 className="text-4xl font-bold text-center mb-2 text-purple-700">
+          Create Account 🚀
         </h2>
 
-        <p className="text-center text-gray-500 mb-6">
-          Get started for free
+        <p className="text-center text-gray-600 mb-8">
+          Start your AI interview journey
         </p>
 
-        <form className="space-y-4" onSubmit={handleSignup}>
+        <form className="space-y-5" onSubmit={handleSignup}>
+
+          {/* NAME */}
           <input
             type="text"
             placeholder="Full Name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg
-            border border-gray-300
-            outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-full px-4 py-4 rounded-xl
+          border border-gray-300 bg-white/90
+          outline-none focus:ring-2 focus:ring-purple-500"
             required
           />
 
+          {/* EMAIL */}
           <input
             type="email"
-            placeholder="Email"
+            placeholder="Email address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg
-            border border-gray-300
-            outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-full px-4 py-4 rounded-xl
+          border border-gray-300 bg-white/90
+          outline-none focus:ring-2 focus:ring-purple-500"
             required
           />
 
+          {/* PASSWORD */}
           <input
             type="password"
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg
-            border border-gray-300
-            outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-full px-4 py-4 rounded-xl
+          border border-gray-300 bg-white/90
+          outline-none focus:ring-2 focus:ring-purple-500"
             required
           />
 
-          <div className="rounded-2xl border border-purple-200 bg-purple-50/60 p-4">
-            <p className="text-sm font-semibold text-purple-700">Face enrollment</p>
-            <p className="mt-1 text-xs text-gray-600">
-              Scan your face now. The same person will be required during login.
+          {/* FACE ENROLLMENT (Styled like login) */}
+          <div className="rounded-2xl border border-purple-200 bg-purple-50/70 p-4">
+            <p className="text-sm font-semibold text-purple-700">
+              Face enrollment
             </p>
-            <div className="mt-4 h-56 overflow-hidden rounded-xl border border-purple-200 bg-black">
+            <p className="mt-1 text-xs text-gray-600">
+              Scan your face now. Same person will be required during login.
+            </p>
+
+            <div className="mt-4 h-52 overflow-hidden rounded-xl border border-purple-200 bg-black">
               <CameraFeed videoRef={videoRef} />
             </div>
+
             <div className="mt-3 flex items-center justify-between gap-3">
               <p className="text-xs text-gray-600">{faceStatus}</p>
               <button
@@ -136,29 +167,40 @@ export default function Signup() {
                 disabled={scanning}
                 className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-purple-700 shadow-sm ring-1 ring-purple-200 transition hover:bg-purple-100 disabled:cursor-not-allowed disabled:opacity-70"
               >
-                {scanning ? "Scanning..." : faceDescriptor.length ? "Rescan Face" : "Scan Face"}
+                {scanning
+                  ? "Scanning..."
+                  : faceDescriptor.length
+                    ? "Rescan Face"
+                    : "Scan Face"}
               </button>
             </div>
           </div>
 
+          {/* SIGNUP BUTTON */}
           <button
             type="submit"
             disabled={submitting}
-            className="w-full py-3 rounded-lg
-            bg-purple-600 text-white font-semibold
-            hover:bg-purple-700 transition disabled:cursor-not-allowed disabled:bg-purple-400"
+            className="w-full py-4 rounded-xl
+          bg-gradient-to-r from-purple-600 to-pink-500
+          text-white font-semibold text-lg
+          shadow-lg hover:scale-105 hover:shadow-xl transition duration-300
+          disabled:cursor-not-allowed disabled:opacity-70"
           >
             {submitting ? "Creating Account..." : "Sign Up"}
           </button>
         </form>
 
-        <p className="text-center mt-6 text-sm text-gray-500">
+        {/* FOOTER */}
+        <p className="text-center mt-6 text-sm text-gray-600">
           Already have an account?{" "}
-          <Link to="/login" className="text-purple-600 hover:underline">
+          <Link
+            to="/login"
+            className="text-purple-600 font-semibold hover:underline"
+          >
             Login
           </Link>
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 }
