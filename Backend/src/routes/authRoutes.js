@@ -2,7 +2,9 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
+const crypto = require("crypto");
 const User = require("../models/User.js");
+const PendingUser = require("../models/PendingUser");
 const { sendVerificationEmail } = require("../services/authEmailService");
 
 const router = express.Router();
@@ -110,36 +112,71 @@ router.post("/test-email", async (req, res) => {
    🚀 SIGNUP
 ============================== */
 router.post("/signup", async (req, res) => {
-  const { name, email, password, faceDescriptor = [] } = req.body;
+  try {
+    const { name, email, password, faceDescriptor = [] } = req.body;
+    const normalizedEmail = String(email || "").trim().toLowerCase();
 
-  if (!Array.isArray(faceDescriptor) || faceDescriptor.length === 0) {
-    return res.status(400).json({ message: "Face scan is required during signup" });
+    if (!name || !normalizedEmail || !password) {
+      return res.status(400).json({ message: "Name, email, and password are required" });
+    }
+
+    if (!Array.isArray(faceDescriptor) || faceDescriptor.length === 0) {
+      return res.status(400).json({ message: "Face scan is required during signup" });
+    }
+
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const frontendBaseUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const backendBaseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get("host")}`;
+    const verificationUrl = `${backendBaseUrl}/api/auth/verify-email/${verificationToken}`;
+
+    await PendingUser.findOneAndUpdate(
+      { email: normalizedEmail },
+      {
+        name,
+        email: normalizedEmail,
+        password: hashedPassword,
+        faceDescriptor,
+        faceEnrolledAt: new Date(),
+        verificationToken,
+        verificationExpires,
+      },
+      {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true,
+      }
+    );
+
+    const emailResult = await sendVerificationEmail({
+      to: normalizedEmail,
+      name,
+      verificationUrl,
+      loginUrl: `${frontendBaseUrl}/login`,
+    });
+
+    if (!emailResult.sent) {
+      await PendingUser.deleteOne({ email: normalizedEmail });
+      return res.status(500).json({
+        message: "Verification email could not be sent. Please try signing up again.",
+        reason: emailResult.reason || "send_failed",
+      });
+    }
+
+    res.status(201).json({
+      message: "Verification email sent. Please verify your email before logging in.",
+      requiresVerification: true,
+    });
+  } catch (error) {
+    console.error("Signup error:", error);
+    res.status(500).json({ message: "Signup failed. Please try again." });
   }
-
-  const exists = await User.findOne({ email });
-  if (exists) {
-    return res.status(400).json({ message: "User already exists" });
-  }
-
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  const user = new User({
-    name,
-    email,
-    password: hashedPassword,
-    faceDescriptor,
-    faceEnrolledAt: new Date(),
-    emailVerified: true,
-    verificationToken: null,
-    verificationExpires: null,
-  });
-
-  await user.save();
-
-  res.json({
-    message: "Signup successful. You can log in with your email, password, and face scan.",
-    requiresVerification: false,
-  });
 });
 
 /* ==============================
@@ -149,12 +186,12 @@ router.get("/verify-email/:token", async (req, res) => {
   try {
     const { token } = req.params;
 
-    const user = await User.findOne({
+    const pendingUser = await PendingUser.findOne({
       verificationToken: token,
       verificationExpires: { $gt: new Date() },
     });
 
-    if (!user) {
+    if (!pendingUser) {
       return res.status(400).send(`
         <html>
           <head>
@@ -234,7 +271,7 @@ router.get("/verify-email/:token", async (req, res) => {
         </head>
         <body>
           <div class="container">
-            <h2>Welcome to Hire Ready AI, ${user.name}!</h2>
+            <h2>Welcome to Hire Ready AI, ${pendingUser.name}!</h2>
             <p>Your email has been successfully registered.</p>
             <div id="status">
               <p>Please confirm this is you by clicking the button below to verify your email.</p>
@@ -262,22 +299,38 @@ router.post("/confirm-verification/:token", async (req, res) => {
   try {
     const { token } = req.params;
 
-    const user = await User.findOne({
+    const pendingUser = await PendingUser.findOne({
       verificationToken: token,
       verificationExpires: { $gt: new Date() },
     });
 
-    if (!user) {
+    if (!pendingUser) {
       return res.status(400).json({
         message: "Verification link is invalid or has expired. Please sign up again.",
       });
     }
 
-    // Mark email as verified
-    user.emailVerified = true;
-    user.verificationToken = null;
-    user.verificationExpires = null;
-    await user.save();
+    const existingUser = await User.findOne({ email: pendingUser.email });
+    if (existingUser) {
+      await PendingUser.deleteOne({ _id: pendingUser._id });
+      return res.json({
+        message: "Email already verified. You can now log in.",
+        success: true,
+      });
+    }
+
+    await User.create({
+      name: pendingUser.name,
+      email: pendingUser.email,
+      password: pendingUser.password,
+      faceDescriptor: pendingUser.faceDescriptor,
+      faceEnrolledAt: pendingUser.faceEnrolledAt || new Date(),
+      emailVerified: true,
+      verificationToken: null,
+      verificationExpires: null,
+    });
+
+    await PendingUser.deleteOne({ _id: pendingUser._id });
 
     return res.json({
       message: "Email verified successfully! You can now log in.",
@@ -297,10 +350,26 @@ router.post("/confirm-verification/:token", async (req, res) => {
 router.post("/login", async (req, res) => {
   try {
     const { email, password, faceDescriptor = [] } = req.body;
+    const normalizedEmail = String(email || "").trim().toLowerCase();
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
+      const pendingUser = await PendingUser.findOne({
+        email: normalizedEmail,
+        verificationExpires: { $gt: new Date() },
+      });
+
+      if (pendingUser) {
+        return res.status(403).json({
+          message: "Please verify your email before logging in.",
+        });
+      }
+
       return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    if (!user.emailVerified) {
+      return res.status(403).json({ message: "Please verify your email before logging in." });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);

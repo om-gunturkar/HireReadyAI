@@ -69,14 +69,14 @@ export default function Signup() {
 
       const data = await res.json();
       if (!res.ok) {
-        alert(data.message || "Signup failed");
+        setError(data.message || "Signup failed");
         return;
       }
 
-      alert("Signup successful. You can now log in with password and face scan.");
+      alert(data.message || "Verification email sent. Please verify before logging in.");
       navigate("/login");
     } catch {
-      alert("Something went wrong");
+      setError("Something went wrong");
     } finally {
       setSubmitting(false);
     }
@@ -178,7 +178,7 @@ export default function Signup() {
                     <p className="text-xs font-semibold uppercase tracking-[0.26em] text-teal-700">Status</p>
                     <p className="mt-3 text-sm leading-7 text-slate-600">{faceStatus}</p>
                     <div className="mt-5 rounded-[1rem] bg-white p-3 text-sm text-slate-500">
-                      Your interview reports and analysis will stay associated with this account and its registered email.
+                      Your account will be created only after you verify the email sent to this address.
                     </div>
                   </div>
                 </div>
@@ -193,7 +193,7 @@ export default function Signup() {
                 disabled={submitting}
                 className="primary-btn w-full px-6 py-3.5 text-base disabled:cursor-not-allowed disabled:opacity-70"
               >
-                {submitting ? "Creating Account..." : "Create Account"}
+                {submitting ? "Sending Verification..." : "Create Account"}
               </button>
             </form>
 

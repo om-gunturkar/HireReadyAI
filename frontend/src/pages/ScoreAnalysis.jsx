@@ -81,6 +81,7 @@ export default function ScoreAnalysis() {
   const navigate = useNavigate();
   const initialReport = location.state?.report || null;
   const sessionId = location.state?.sessionId || initialReport?.sessionId || "";
+  const metricsHistory = location.state?.metricsHistory || [];
 
   const [report, setReport] = useState(initialReport);
   const [loading, setLoading] = useState(!initialReport && !!sessionId);
@@ -392,6 +393,20 @@ export default function ScoreAnalysis() {
           </div>
 
           <div className="flex flex-col gap-3 border-t border-slate-200/70 px-6 py-6 sm:flex-row sm:justify-end sm:px-10">
+            {metricsHistory.length > 0 ? (
+              <button
+                onClick={() => navigate("/mock-interview/feedback", {
+                  state: {
+                    metricsHistory,
+                    mode,
+                    value: topic,
+                  },
+                })}
+                className="rounded-full border border-teal-300 px-6 py-3 font-semibold text-teal-700 transition hover:bg-teal-50"
+              >
+                View behavior feedback
+              </button>
+            ) : null}
             <button
               onClick={() => navigate("/home")}
               className="rounded-full border border-slate-300 px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-100"

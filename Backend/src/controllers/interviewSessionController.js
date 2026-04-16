@@ -344,7 +344,7 @@ exports.completeSession = async (req, res) => {
         const user = await User.findById(session.userId).select("name email");
         if (user?.email) {
           await sendInterviewReportEmail({
-            to: process.env.EMAIL_USER,
+            to: user.email,
             name: user.name,
             session: response,
           });

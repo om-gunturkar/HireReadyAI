@@ -792,7 +792,7 @@ export default function InterviewSession() {
     try {
       const session = await startInterviewSession({
         mode,
-        role: value,
+        topic: value,
         level: lvl,
       });
       setSessionId(session.sessionId);
@@ -1126,6 +1126,7 @@ export default function InterviewSession() {
         report,
         mode,
         value,
+        metricsHistory,
       },
     });
   };

@@ -173,7 +173,7 @@ export default function Login() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-sm font-semibold text-slate-900">Face verification</p>
-                    <p className="mt-1 text-xs leading-6 text-slate-500">Use the same person who enrolled during signup.</p>
+                    <p className="mt-1 text-xs leading-6 text-slate-500">Use the same person who enrolled during signup after email verification is complete.</p>
                   </div>
                   <button
                     type="button"
@@ -196,7 +196,7 @@ export default function Login() {
                     <p className="text-xs font-semibold uppercase tracking-[0.26em] text-teal-700">Status</p>
                     <p className="mt-3 text-sm leading-7 text-slate-600">{faceStatus}</p>
                     <div className="mt-5 rounded-[1rem] bg-white p-3 text-sm text-slate-500">
-                      The scanned image will also appear during the interview session and feedback report.
+                      Login is enabled only after the verification email has been confirmed.
                     </div>
                   </div>
                 </div>
