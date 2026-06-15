@@ -10,16 +10,33 @@ let interviewState = {
   level: "easy",
   totalQuestionCount: 0,
   maxQuestions: 15,
+  followUpPositions: [],
 };
 
 exports.startInterview = (resumeText, level) => {
+
+  const positions = [];
+
+  while (positions.length < 3) {
+    const pos = Math.floor(Math.random() * 9) + 2; // 2-10
+
+    if (!positions.includes(pos)) {
+      positions.push(pos);
+    }
+  }
+
+  positions.sort((a, b) => a - b);
+
   interviewState = {
     resumeText: resumeText || "",
     level: level || "easy",
     totalQuestionCount: 0,
-    maxQuestions: 15,
-    askedQuestions: [], // NEW
+    maxQuestions: 10,
+    askedQuestions: [],
+    followUpPositions: positions,
   };
+
+  console.log("Follow-up positions:", positions);
 };
 
 exports.generateResumeQuestion = async (resumeText = "", level = "easy") => {
@@ -130,6 +147,10 @@ exports.generateNextQuestion = async (previousAnswer = "") => {
     if (interviewState.totalQuestionCount >= interviewState.maxQuestions) {
       return { done: true };
     }
+    const nextQuestionNumber = interviewState.totalQuestionCount + 1;
+
+const isFollowUp =
+  interviewState.followUpPositions.includes(nextQuestionNumber);
 
     let prompt = `
 You are a strict technical interviewer conducting an interview based on the candidate's resume.
@@ -143,8 +164,8 @@ Generate ONE technical interview question based on the candidate's resume and ex
 Return only the question.
 `;
 
-    if (previousAnswer) {
-      prompt = `
+if (isFollowUp && previousAnswer) {
+  prompt = `
 You are continuing a technical interview based on the candidate's resume.
 
 Candidate resume:
@@ -155,10 +176,10 @@ Difficulty: ${interviewState.level}
 Candidate's previous answer:
 "${previousAnswer}"
 
-Ask ONE deep follow-up technical question related to their resume or their previous answer.
+Ask ONE deep follow-up technical question related to the candidate's answer.
 Return only the question.
 `;
-    }
+}
 
     const response = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile", // free & good model
@@ -167,10 +188,12 @@ Return only the question.
     });
 
     const question = response.choices[0].message.content.trim();
+    interviewState.totalQuestionCount++;
 
     return {
       question,
       done: false,
+      totalQuestionCount: interviewState.totalQuestionCount,
     };
   } catch (err) {
     console.error("Groq Error:", err.message);
