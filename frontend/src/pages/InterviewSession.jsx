@@ -31,6 +31,7 @@ export default function InterviewSession() {
   const [rawQuestion, setRawQuestion] = useState("");
   const [finalTranscript, setFinalTranscript] = useState("");
   const [interimTranscript, setInterimTranscript] = useState("");
+  const [isFollowUpQuestion, setIsFollowUpQuestion] = useState(false);
   const [count, setCount] = useState(1);
   const countRef = useRef(count);
   const [timeLeft, setTimeLeft] = useState(30);
@@ -60,6 +61,8 @@ export default function InterviewSession() {
   const selectedVoiceRef = useRef(null);
   const faceViolationRef = useRef(0);
   const multipleViolationRef = useRef(0);
+  const manualStopRef = useRef(false);
+
   const alertStateRef = useRef({
     faceNotDetected: false,
     faceNotDetectedStart: null,
@@ -84,37 +87,27 @@ export default function InterviewSession() {
       "";
     setUserFaceSnapshot(snapshot);
   }, []);
-  const startMic = () => {
-    try {
-      recognitionRef.current?.start();
-      console.log("🎤 Mic ON");
-    } catch (e) {
-      console.log("Mic start error:", e);
-    }
-  };
+
 
   const stopMic = () => {
     try {
+      manualStopRef.current = true;
       recognitionRef.current?.stop();
       console.log("🎤 Mic OFF");
     } catch (e) {
       console.log("Mic stop error:", e);
     }
   };
-  useEffect(() => {
-    return () => {
-      // ✅ Stop voice when component unmounts (page change)
-      window.speechSynthesis.cancel();
 
-      // also stop recognition
-      try {
-        recognitionRef.current?.stop();
-      } catch { }
-
-      // stop timers
-      clearInterval(timerRef.current);
-    };
-  }, []);
+  const startMic = () => {
+    try {
+      manualStopRef.current = false;
+      recognitionRef.current?.start();
+      console.log("🎤 Mic ON");
+    } catch (e) {
+      console.log("Mic start error:", e);
+    }
+  };
 
   const [voiceLevel, setVoiceLevel] = useState(0);
 
@@ -788,6 +781,7 @@ export default function InterviewSession() {
     // ✅ 5. YOUR ORIGINAL CODE CONTINUES (UNCHANGED)
     setLevel(lvl);
     levelRef.current = lvl;
+    let newSessionId = "";
 
     try {
       const session = await startInterviewSession({
@@ -795,9 +789,13 @@ export default function InterviewSession() {
         topic: value,
         level: lvl,
       });
-      setSessionId(session.sessionId);
+
+      newSessionId = session.sessionId;
+      setSessionId(newSessionId);
+
     } catch (error) {
       console.error("Failed to start interview session:", error);
+      return;
     }
 
     const msg = `You have selected the ${lvl} level. Let's start the interview.`;
@@ -807,7 +805,7 @@ export default function InterviewSession() {
 
     setTimeout(() => {
       setPhase("interview");
-      getQuestion("", 1);
+      getQuestion("", 1, newSessionId);
     }, 2500);
   };
 
@@ -861,7 +859,7 @@ export default function InterviewSession() {
 
 
   /* ---------------- FETCH QUESTION ---------------- */
-  const getQuestion = async (answerText = "", qCount = count) => {
+  const getQuestion = async (answerText = "", qCount = count, activeSessionId = sessionId) => {
     setFinalTranscript("");
     setInterimTranscript("");
     clearInterval(timerRef.current);
@@ -897,7 +895,7 @@ export default function InterviewSession() {
         type: mode,
         role: value,
         level: levelRef.current,
-        sessionId,
+        sessionId: activeSessionId,
       };
 
       if (answerText) {
@@ -930,13 +928,17 @@ export default function InterviewSession() {
       }
 
       const data = await res.json();
+      setIsFollowUpQuestion(data.isFollowUp || false);
 
       if (!data.question) {
         setQuestion("No question received from server.");
         return;
       }
 
-      const cleanQ = data.question;
+      const cleanQ =
+        typeof data.question === "string"
+          ? data.question
+          : data.question.question || data.question.text || "Question not found";
       const displayQ = `Q${qCount}. ${cleanQ}`;
 
       setRawQuestion(cleanQ);
@@ -1404,9 +1406,17 @@ export default function InterviewSession() {
                   />
                 </div>
 
-                <p className="mt-5 text-lg font-semibold leading-relaxed text-slate-900 sm:text-xl lg:text-2xl lg:leading-snug">
-                  {question}
-                </p>
+                <div className="mt-5">
+                  {isFollowUpQuestion && (
+                    <div className="mb-3 inline-flex items-center rounded-full bg-gradient-to-r from-violet-600 to-purple-600 px-3 py-1 text-xs font-semibold text-white shadow-md">
+                      Follow Up Question
+                    </div>
+                  )}
+
+                  <p className="text-lg font-semibold leading-relaxed text-slate-900 sm:text-xl lg:text-2xl lg:leading-snug">
+                    {question}
+                  </p>
+                </div>
 
                 {phase === "level" && (
                   <div className="mt-8">

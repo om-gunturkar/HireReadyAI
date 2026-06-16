@@ -8,13 +8,19 @@ const { sendInterviewReportEmail } = require("../services/reportEmailService");
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
-const normalizeDomainKey = (value) => String(value || "").trim().toLowerCase();
-const escapeRegex = (value) => String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const normalizeDomainKey = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+const escapeRegex = (value) =>
+  String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const toHundredScale = (score) => {
   const numeric = Number(score);
   if (Number.isNaN(numeric)) return 0;
-  return numeric <= 10 ? clamp(Math.round(numeric * 10), 0, 100) : clamp(Math.round(numeric), 0, 100);
+  return numeric <= 10
+    ? clamp(Math.round(numeric * 10), 0, 100)
+    : clamp(Math.round(numeric), 0, 100);
 };
 
 const average = (list) => {
@@ -25,7 +31,11 @@ const average = (list) => {
 
 const pickRandomFollowUpTargets = (maxQuestions = 10, totalTargets = 2) => {
   const available = [];
-  for (let questionNumber = 2; questionNumber <= maxQuestions; questionNumber += 1) {
+  for (
+    let questionNumber = 2;
+    questionNumber <= maxQuestions;
+    questionNumber += 1
+  ) {
     available.push(questionNumber);
   }
 
@@ -71,28 +81,65 @@ const buildSummary = (session, emotions) => {
   });
 
   const totalFrames = emotions.length;
-  const averageVisualConfidence = totalFrames > 0 ? Math.round(emotionConfidenceSum / totalFrames) : 0;
-  const focusScore = totalFrames > 0 ? Math.round((attentionSum / totalFrames) * 100) : 0;
-  const stressFrames = emotionCounts.sad + emotionCounts.angry + emotionCounts.fearful + emotionCounts.disgusted;
-  const composureScore = totalFrames > 0 ? clamp(Math.round(((totalFrames - stressFrames) / totalFrames) * 100), 0, 100) : 0;
+  const averageVisualConfidence =
+    totalFrames > 0 ? Math.round(emotionConfidenceSum / totalFrames) : 0;
+  const focusScore =
+    totalFrames > 0 ? Math.round((attentionSum / totalFrames) * 100) : 0;
+  const stressFrames =
+    emotionCounts.sad +
+    emotionCounts.angry +
+    emotionCounts.fearful +
+    emotionCounts.disgusted;
+  const composureScore =
+    totalFrames > 0
+      ? clamp(
+          Math.round(((totalFrames - stressFrames) / totalFrames) * 100),
+          0,
+          100,
+        )
+      : 0;
 
-  const confidenceScore = Math.round(answerConfidenceScore * 0.6 + averageVisualConfidence * 0.4);
+  const confidenceScore = Math.round(
+    answerConfidenceScore * 0.6 + averageVisualConfidence * 0.4,
+  );
   const totalScore = Math.round(
-    technicalScore * 0.45 + communicationScore * 0.3 + confidenceScore * 0.25
+    technicalScore * 0.45 + communicationScore * 0.3 + confidenceScore * 0.25,
   );
 
   const strengths = [];
   const improvements = [];
 
-  if (technicalScore >= 75) strengths.push("Strong technical understanding across interview responses.");
-  if (communicationScore >= 75) strengths.push("Clear and structured communication while answering questions.");
-  if (confidenceScore >= 75) strengths.push("Good confidence and interview presence on camera.");
-  if (focusScore >= 75) strengths.push("Maintained strong focus and attention throughout the interview.");
+  if (technicalScore >= 75)
+    strengths.push(
+      "Strong technical understanding across interview responses.",
+    );
+  if (communicationScore >= 75)
+    strengths.push(
+      "Clear and structured communication while answering questions.",
+    );
+  if (confidenceScore >= 75)
+    strengths.push("Good confidence and interview presence on camera.");
+  if (focusScore >= 75)
+    strengths.push(
+      "Maintained strong focus and attention throughout the interview.",
+    );
 
-  if (technicalScore < 65) improvements.push("Improve technical depth with more role-specific practice questions.");
-  if (communicationScore < 65) improvements.push("Use clearer answer structure: context, approach, and final outcome.");
-  if (confidenceScore < 65) improvements.push("Practice mock sessions to improve confidence and delivery stability.");
-  if (focusScore < 65) improvements.push("Maintain consistent eye focus on camera and reduce movement.");
+  if (technicalScore < 65)
+    improvements.push(
+      "Improve technical depth with more role-specific practice questions.",
+    );
+  if (communicationScore < 65)
+    improvements.push(
+      "Use clearer answer structure: context, approach, and final outcome.",
+    );
+  if (confidenceScore < 65)
+    improvements.push(
+      "Practice mock sessions to improve confidence and delivery stability.",
+    );
+  if (focusScore < 65)
+    improvements.push(
+      "Maintain consistent eye focus on camera and reduce movement.",
+    );
 
   const aiFeedback = [
     `Overall performance is ${totalScore >= 75 ? "strong" : totalScore >= 60 ? "moderate" : "developing"} with a score of ${totalScore}/100.`,
@@ -126,11 +173,19 @@ const assertSessionAccess = (session, req) => {
   if (!session?.userId) return null;
 
   if (!req.user?.id) {
-    return { status: 401, payload: { error: "Login required to access this interview session" } };
+    return {
+      status: 401,
+      payload: { error: "Login required to access this interview session" },
+    };
   }
 
   if (String(session.userId) !== String(req.user.id)) {
-    return { status: 403, payload: { error: "You are not allowed to access this interview session" } };
+    return {
+      status: 403,
+      payload: {
+        error: "You are not allowed to access this interview session",
+      },
+    };
   }
 
   return null;
@@ -144,11 +199,16 @@ const getDomainHistory = async (session) => {
   const feedbackEntries = await FeedbackScore.find({
     userId: session.userId,
     mode: session.mode,
-    topic: new RegExp(`^${escapeRegex(normalizeDomainKey(session.topic))}$`, "i"),
+    topic: new RegExp(
+      `^${escapeRegex(normalizeDomainKey(session.topic))}$`,
+      "i",
+    ),
     completedAt: { $ne: null },
   })
     .sort({ completedAt: 1, createdAt: 1 })
-    .select("sessionId mode topic level scoreData summary completedAt startedAt");
+    .select(
+      "sessionId mode topic level scoreData summary completedAt startedAt",
+    );
 
   return feedbackEntries.map((item, index) => ({
     attempt: index + 1,
@@ -173,26 +233,31 @@ const appendHistoryToResponse = async (session, baseResponse) => {
   let history = await getDomainHistory(session);
 
   if (!history.length && session?.completedAt) {
-    history = [{
-      attempt: 1,
-      sessionId: session.sessionId,
-      mode: session.mode,
-      topic: session.topic,
-      level: session.level,
-      completedAt: session.completedAt,
-      startedAt: session.startedAt,
-      scoreData: session.scoreData,
-      summary: {
-        strengths: session.summary?.strengths || [],
-        improvements: session.summary?.improvements || [],
-        focusScore: session.summary?.focusScore || 0,
-        composureScore: session.summary?.composureScore || 0,
-        averageVisualConfidence: session.summary?.averageVisualConfidence || 0,
+    history = [
+      {
+        attempt: 1,
+        sessionId: session.sessionId,
+        mode: session.mode,
+        topic: session.topic,
+        level: session.level,
+        completedAt: session.completedAt,
+        startedAt: session.startedAt,
+        scoreData: session.scoreData,
+        summary: {
+          strengths: session.summary?.strengths || [],
+          improvements: session.summary?.improvements || [],
+          focusScore: session.summary?.focusScore || 0,
+          composureScore: session.summary?.composureScore || 0,
+          averageVisualConfidence:
+            session.summary?.averageVisualConfidence || 0,
+        },
       },
-    }];
+    ];
   }
 
-  const currentIndex = history.findIndex((item) => item.sessionId === session.sessionId);
+  const currentIndex = history.findIndex(
+    (item) => item.sessionId === session.sessionId,
+  );
   const previousAttempt = currentIndex > 0 ? history[currentIndex - 1] : null;
 
   return {
@@ -207,7 +272,9 @@ exports.startSession = async (req, res) => {
     const { mode, topic, level } = req.body;
 
     if (!mode || !topic || !level) {
-      return res.status(400).json({ error: "mode, topic and level are required" });
+      return res
+        .status(400)
+        .json({ error: "mode, topic and level are required" });
     }
 
     const sessionId = crypto.randomUUID();
@@ -217,6 +284,8 @@ exports.startSession = async (req, res) => {
       mode,
       topic,
       level,
+      questionCount: 0,
+      followUpCount: 0,
       followUpTargets: pickRandomFollowUpTargets(10, 2),
     });
 
@@ -251,7 +320,7 @@ const syncFeedbackScore = async (session, report) => {
       upsert: true,
       new: true,
       setDefaultsOnInsert: true,
-    }
+    },
   );
 };
 
@@ -261,7 +330,9 @@ exports.saveAnswerEvaluation = async (req, res) => {
     const { question, answer } = req.body;
 
     if (!question || !answer) {
-      return res.status(400).json({ error: "question and answer are required" });
+      return res
+        .status(400)
+        .json({ error: "question and answer are required" });
     }
 
     const session = await InterviewSession.findOne({ sessionId });

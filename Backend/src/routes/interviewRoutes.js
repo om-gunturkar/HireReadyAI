@@ -2,6 +2,7 @@ console.log("InterviewRoutes loaded");
 const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
+
 const {
   startSession,
   saveAnswerEvaluation,
@@ -52,7 +53,9 @@ async function maybeGenerateFollowUp({
   }
 
   const nextQuestionNumber = (session.questionCount || 0) + 1;
-  const followUpTargets = Array.isArray(session.followUpTargets) ? session.followUpTargets : [];
+  const followUpTargets = Array.isArray(session.followUpTargets)
+    ? session.followUpTargets
+    : [];
 
   if ((session.followUpCount || 0) >= 2) {
     return null;
@@ -103,7 +106,8 @@ router.get("/session/:sessionId/report", optionalAuth, getSessionReport);
 
 router.post("/next", async (req, res) => {
   console.log("Incoming body:", req.body);
-  let { type, role, level, sessionId, previousQuestion, previousAnswer } = req.body;
+  let { type, role, level, sessionId, previousQuestion, previousAnswer } =
+    req.body;
 
   // Normalize inputs
   type = type?.toLowerCase().trim();
@@ -196,7 +200,9 @@ router.post("/next", async (req, res) => {
     const { resumeText } = req.body;
 
     if (!resumeText) {
-      return res.status(400).json({ error: "Resume text is required for resume-based interview" });
+      return res
+        .status(400)
+        .json({ error: "Resume text is required for resume-based interview" });
     }
 
     const followUp = await maybeGenerateFollowUp({
@@ -215,12 +221,15 @@ router.post("/next", async (req, res) => {
 
     // Generate question using Groq (resume-based)
     try {
-      const result = await groqService.generateResumeQuestion(resumeText, level);
+      const result = await groqService.generateResumeQuestion(
+        resumeText,
+        level,
+      );
 
       if (sessionId) {
         await InterviewSession.findOneAndUpdate(
           { sessionId },
-          { $inc: { questionCount: 1 } }
+          { $inc: { questionCount: 1 } },
         );
       }
 
@@ -240,7 +249,7 @@ router.post("/next", async (req, res) => {
   if (sessionId) {
     await InterviewSession.findOneAndUpdate(
       { sessionId },
-      { $inc: { questionCount: 1 } }
+      { $inc: { questionCount: 1 } },
     );
   }
 
