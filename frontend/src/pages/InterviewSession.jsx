@@ -19,8 +19,8 @@ export default function InterviewSession() {
   const state = location.state || {};
   const navigate = useNavigate();
   const isAISpeakingRef = useRef(false);
-  const mode = state.mode || "";
-  const value = state.value || "";
+  const mode = state.mode || "role";
+  const value = state.value || "Frontend Developer";
   const resumeText = state.resumeText || "";
   const silenceTimerRef = useRef(null);
   const levelRef = useRef("");
@@ -59,6 +59,7 @@ export default function InterviewSession() {
   const lastHeadPosRef = useRef("forward");
   const isProcessingRef = useRef(false);
   const selectedVoiceRef = useRef(null);
+  const isRecognitionRunningRef = useRef(false);
   const faceViolationRef = useRef(0);
   const multipleViolationRef = useRef(0);
   const manualStopRef = useRef(false);
@@ -91,8 +92,12 @@ export default function InterviewSession() {
 
   const stopMic = () => {
     try {
+      if (!isRecognitionRunningRef.current) return;
+
       manualStopRef.current = true;
       recognitionRef.current?.stop();
+      isRecognitionRunningRef.current = false;
+
       console.log("🎤 Mic OFF");
     } catch (e) {
       console.log("Mic stop error:", e);
@@ -101,8 +106,13 @@ export default function InterviewSession() {
 
   const startMic = () => {
     try {
+      if (isAISpeakingRef.current) return;
+      if (isRecognitionRunningRef.current) return;
+
       manualStopRef.current = false;
       recognitionRef.current?.start();
+      isRecognitionRunningRef.current = true;
+
       console.log("🎤 Mic ON");
     } catch (e) {
       console.log("Mic start error:", e);
@@ -593,6 +603,7 @@ export default function InterviewSession() {
     let isManuallyStopped = false;
 
     recog.onstart = () => {
+      isRecognitionRunningRef.current = true;
       console.log("🎤 Mic started");
     };
 
@@ -621,33 +632,34 @@ export default function InterviewSession() {
 
     // 🔥 KEY FIX (delay restart)
     recog.onend = () => {
+      isRecognitionRunningRef.current = false;
       console.log("⚠️ Mic stopped");
 
-      // ❌ DO NOT restart if AI is speaking
-      if (isAISpeakingRef.current) {
-        console.log("🚫 Mic blocked (AI speaking)");
-        return;
-      }
+      if (isAISpeakingRef.current) return;
+      if (manualStopRef.current) return;
 
-      // ❌ DO NOT restart if manually stopped
-      if (manualStopRef.current) {
-        return;
-      }
-
-      // ✅ Only restart if user speaking phase
       if (phase === "interview") {
         setTimeout(() => {
-          try {
-            recognitionRef.current?.start();
-          } catch { }
-        }, 500);
+          startMic();
+        }, 1000);
       }
     };
-
     recog.onerror = (e) => {
       console.log("Speech error:", e);
-    };
 
+      if (e.error === "aborted") {
+        isRecognitionRunningRef.current = false;
+        return;
+      }
+
+      if (e.error === "not-allowed") {
+        setTopAlert({
+          id: "mic-permission",
+          type: "error",
+          message: "Microphone permission denied. Please allow mic access.",
+        });
+      }
+    };
     recognitionRef.current = recog;
 
     return () => {
@@ -785,8 +797,8 @@ export default function InterviewSession() {
 
     try {
       const session = await startInterviewSession({
-        mode,
-        topic: value,
+        mode: mode || "role",
+        topic: value || "General",
         level: lvl,
       });
 
@@ -859,7 +871,12 @@ export default function InterviewSession() {
 
 
   /* ---------------- FETCH QUESTION ---------------- */
-  const getQuestion = async (answerText = "", qCount = count, activeSessionId = sessionId) => {
+  const getQuestion = async (
+    answerText = "",
+    qCount = count,
+    activeSessionId = sessionId,
+    previousQ = ""
+  ) => {
     setFinalTranscript("");
     setInterimTranscript("");
     clearInterval(timerRef.current);
@@ -898,13 +915,14 @@ export default function InterviewSession() {
         sessionId: activeSessionId,
       };
 
-      if (answerText) {
-        requestBody.previousAnswer = answerText;
+      if (answerText && answerText.trim()) {
+        requestBody.previousAnswer = answerText.trim();
       }
 
-      if (rawQuestion) {
-        requestBody.previousQuestion = rawQuestion;
+      if (previousQ && previousQ.trim()) {
+        requestBody.previousQuestion = previousQ.trim();
       }
+      console.log("🚀 Sending FULL Request:", requestBody);
 
       // Add resumeText for resume-based interviews
       if (mode === "resume") {
@@ -928,6 +946,7 @@ export default function InterviewSession() {
       }
 
       const data = await res.json();
+      console.log("📦 Backend Response:", data);
       setIsFollowUpQuestion(data.isFollowUp || false);
 
       if (!data.question) {
@@ -939,7 +958,9 @@ export default function InterviewSession() {
         typeof data.question === "string"
           ? data.question
           : data.question.question || data.question.text || "Question not found";
-      const displayQ = `Q${qCount}. ${cleanQ}`;
+      const displayQ = data.isFollowUp
+        ? `Follow-Up: ${cleanQ}`
+        : `Q${qCount}. ${cleanQ}`;
 
       setRawQuestion(cleanQ);
       setQuestion(displayQ);
@@ -1056,7 +1077,7 @@ export default function InterviewSession() {
 
     stopAll();
 
-    const userAnswer = finalTranscript + interimTranscript;
+    const userAnswer = (finalTranscript + interimTranscript).trim();
     const currentQuestion = rawQuestion;
 
     // 🧠 STEP 2: Evaluate answer BEFORE moving ahead
@@ -1090,25 +1111,22 @@ export default function InterviewSession() {
     }
 
     // 🔁 NEXT QUESTION
-    setCount((prev) => {
-      const newCount = prev + 1;
+    const newCount = countRef.current + 1;
 
-      getQuestion(userAnswer, newCount);
+    setCount(newCount);
+    countRef.current = newCount;
 
-      return newCount;
-    });
+    await getQuestion(userAnswer, newCount, sessionId, currentQuestion);
 
-    setTimeout(() => {
-      isProcessingRef.current = false;
-    }, 500);
+    isProcessingRef.current = false;
   };
 
   /* ---------------- END BUTTON ---------------- */
-  const endAndProceed = () => {
-    clearInterval(timerRef.current); // only stop timer
-    if (!isProcessingRef.current) {
-      nextQuestion();
-    }
+  const endAndProceed = async () => {
+    if (isProcessingRef.current) return;
+
+    clearInterval(timerRef.current);
+    await nextQuestion();
   };
 
   const finalizeInterviewAndNavigate = async () => {
@@ -1389,15 +1407,31 @@ export default function InterviewSession() {
 
               <div className="order-1 flex min-h-0 flex-col rounded-[1.5rem] border border-slate-200/90 bg-gradient-to-br from-white to-slate-50/90 p-5 shadow-inner sm:p-6 lg:p-8 lg:order-2">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <span
-                    className={`text-2xl font-bold tabular-nums transition-colors duration-300 sm:text-3xl ${timeLeft <= 10 && timeLeft > 0 ? "text-red-600" : ""
-                      } ${timeLeft <= 0 ? "text-emerald-600" : ""} ${timeLeft > 10 ? "text-teal-800" : ""}`}
-                  >
-                    {timeLeft > 0
-                      ? `0:${timeLeft.toString().padStart(2, "0")}`
-                      : `+${Math.abs(timeLeft).toString().padStart(2, "0")}`}
-                    <span className="ml-2 text-sm font-semibold uppercase tracking-wider text-slate-500">timer</span>
-                  </span>
+
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`text-2xl font-bold tabular-nums transition-colors duration-300 sm:text-3xl
+      ${timeLeft <= 10 && timeLeft > 0 ? "text-red-600" : ""}
+      ${timeLeft <= 0 ? "text-emerald-600" : ""}
+      ${timeLeft > 10 ? "text-teal-800" : ""}`}
+                    >
+                      {timeLeft > 0
+                        ? `0:${timeLeft.toString().padStart(2, "0")}`
+                        : `+${Math.abs(timeLeft).toString().padStart(2, "0")}`}
+
+                      <span className="ml-2 text-sm font-semibold uppercase tracking-wider text-slate-500">
+                        timer
+                      </span>
+                    </span>
+
+                    {isFollowUpQuestion && (
+                      <div className="flex items-center gap-2 rounded-full bg-purple-600 px-3 py-1 text-xs font-semibold text-white shadow-lg">
+                        <span className="h-2 w-2 rounded-full bg-white animate-pulse"></span>
+                        Follow-Up
+                      </div>
+                    )}
+                  </div>
+
                   <CandidateIdentityCard
                     title="Verified candidate"
                     subtitle="Login face scan"
@@ -1406,16 +1440,11 @@ export default function InterviewSession() {
                   />
                 </div>
 
-                <div className="mt-5">
-                  {isFollowUpQuestion && (
-                    <div className="mb-3 inline-flex items-center rounded-full bg-gradient-to-r from-violet-600 to-purple-600 px-3 py-1 text-xs font-semibold text-white shadow-md">
-                      Follow Up Question
-                    </div>
-                  )}
-
+                <div className="mt-5 relative">
                   <p className="text-lg font-semibold leading-relaxed text-slate-900 sm:text-xl lg:text-2xl lg:leading-snug">
                     {question}
                   </p>
+
                 </div>
 
                 {phase === "level" && (
