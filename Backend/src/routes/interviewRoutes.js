@@ -2,7 +2,7 @@ console.log("InterviewRoutes loaded");
 const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
-
+const processingFollowUps = new Set();
 const {
   startSession,
   saveAnswerEvaluation,
@@ -60,7 +60,15 @@ async function maybeGenerateFollowUp({
 
     console.log("Current followUpCount:", session.followUpCount);
 
-    if ((session.followUpCount || 0) >= 5) {
+    if ((session.followUpCount || 0) >= 3) {
+      return null;
+    }
+
+    if (session.lastQuestionWasFollowUp) {
+      return null;
+    }
+
+    if ((session.normalQuestionStreak || 0) < 1) {
       return null;
     }
 
@@ -90,6 +98,10 @@ async function maybeGenerateFollowUp({
         $inc: {
           followUpCount: 1,
           questionCount: 1,
+        },
+        $set: {
+          lastQuestionWasFollowUp: true,
+          normalQuestionStreak: 0,
         },
       },
       { returnDocument: "after" },
@@ -249,13 +261,19 @@ router.post("/next", async (req, res) => {
           level,
         );
 
-        if (sessionId) {
-          await InterviewSession.findOneAndUpdate(
-            { sessionId },
-            { $inc: { questionCount: 1 } },
-            { returnDocument: "after" },
-          );
-        }
+        await InterviewSession.findOneAndUpdate(
+          { sessionId },
+          {
+            $inc: {
+              questionCount: 1,
+              normalQuestionStreak: 1,
+            },
+            $set: {
+              lastQuestionWasFollowUp: false,
+            },
+          },
+          { returnDocument: "after" },
+        );
 
         return res.json({ ...result, isFollowUp: false });
       } catch (error) {
@@ -275,13 +293,19 @@ router.post("/next", async (req, res) => {
 
     const question = getRandomQuestion(selectedQuestions);
 
-    if (sessionId) {
-      await InterviewSession.findOneAndUpdate(
-        { sessionId },
-        { $inc: { questionCount: 1 } },
-        { returnDocument: "after" },
-      );
-    }
+    await InterviewSession.findOneAndUpdate(
+      { sessionId },
+      {
+        $inc: {
+          questionCount: 1,
+          normalQuestionStreak: 1,
+        },
+        $set: {
+          lastQuestionWasFollowUp: false,
+        },
+      },
+      { returnDocument: "after" },
+    );
 
     return res.json({ question, isFollowUp: false });
   } catch (error) {
