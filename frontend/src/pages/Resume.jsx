@@ -150,25 +150,25 @@ export default function Resume() {
         STYLES
   ======================== */
 
-  const card = "bg-white p-6 rounded-2xl shadow-sm";
-  const block = "bg-gray-50 p-4 rounded-xl mb-4 relative";
+  const card = "rounded-[1.5rem] border border-slate-200 bg-white/95 p-6 shadow-[0_12px_32px_rgba(15,23,42,0.06)]";
+  const block = "relative mb-4 rounded-[1.1rem] border border-slate-200 bg-slate-50/80 p-4";
   const inputClass =
-    "w-full p-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-300";
+    "w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-teal-600 focus:ring-4 focus:ring-teal-100";
   const deleteBtn =
-    "absolute top-3 right-3 bg-red-100 text-red-500 rounded-full w-6 h-6 flex items-center justify-center text-sm cursor-pointer";
-  const addBtn = "text-purple-600 font-medium mt-2";
+    "absolute right-3 top-3 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-sm text-rose-600 transition hover:bg-rose-100";
+  const addBtn = "mt-2 font-semibold text-teal-700 transition hover:text-teal-900";
 
   /* =======================
         UI
   ======================== */
 
   return (
-    <div className="min-h-[100dvh] bg-gray-50 lg:h-[100dvh]">
-      <div className="page-frame flex h-full min-h-[100dvh] flex-col py-3 sm:py-4 lg:box-border lg:min-h-[calc(100dvh-3rem)] lg:max-h-[calc(100dvh-3rem)] lg:flex-row lg:overflow-hidden lg:py-4">
+    <div className="min-h-[100dvh] overflow-x-hidden bg-slate-50 lg:h-[100dvh]">
+      <div className="flex h-full min-h-[100dvh] w-full flex-col px-5 py-3 sm:px-8 sm:py-4 lg:box-border lg:min-h-[100dvh] lg:max-h-[100dvh] lg:flex-row lg:overflow-hidden lg:px-12 lg:py-4 xl:px-16">
       {/* LEFT SIDE */}
       <div className="h-[min(55vh,520px)] w-full min-h-0 shrink-0 overflow-y-auto py-4 sm:py-6 lg:h-full lg:w-1/2 lg:max-h-full lg:overflow-y-auto lg:pr-4 lg:py-2">
 
-        <h1 className="text-3xl font-bold mb-6">Create Resume</h1>
+        <h1 className="mb-6 text-3xl font-bold text-slate-950">Create Resume</h1>
 
         {/* PERSONAL */}
         <div className={card}>
@@ -472,10 +472,10 @@ export default function Resume() {
         )}
 
         <div className="flex gap-4 mt-6">
-          <button onClick={handleSaveToDB} className="w-1/2 py-3 bg-green-600 text-white rounded-lg">
+          <button onClick={handleSaveToDB} className="primary-btn w-1/2 py-3">
             Save
           </button>
-          <button onClick={handleGeneratePDF} className="w-1/2 py-3 bg-purple-600 text-white rounded-lg">
+          <button onClick={handleGeneratePDF} className="secondary-btn w-1/2 py-3 hover:!border-emerald-600 hover:!bg-emerald-600 hover:!text-white">
             Download PDF
           </button>
         </div>
@@ -483,7 +483,7 @@ export default function Resume() {
       </div>
 
       {/* RIGHT PDF */}
-      <div className="flex min-h-[45vh] w-full flex-1 flex-col justify-center overflow-auto rounded-xl bg-gray-200 p-3 sm:p-4 lg:h-full lg:min-h-0 lg:w-1/2 lg:max-h-full lg:rounded-l-none lg:rounded-r-xl">
+      <div className="flex min-h-[45vh] w-full flex-1 flex-col justify-center overflow-auto rounded-[1.5rem] border border-slate-200 bg-slate-100 p-3 shadow-[0_12px_32px_rgba(15,23,42,0.06)] sm:p-4 lg:h-full lg:min-h-0 lg:w-1/2">
         <Suspense fallback={<div>Loading...</div>}>
           <PDFViewer width="100%" height="100%">
             <SelectedTemplate data={resumeData} />

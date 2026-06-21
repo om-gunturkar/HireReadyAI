@@ -80,9 +80,9 @@ export default function Home() {
   };
 
   return (
-    <div className="app-shell">
-      <div className="page-frame">
-        <nav className="glass-card relative mt-2 flex flex-wrap items-center justify-between overflow-visible gap-3 rounded-[1.75rem] px-4 py-4 sm:px-6 z-50">
+    <div className="min-h-screen overflow-x-hidden bg-slate-50">
+      <div className="w-full">
+        <nav className="relative z-50 flex w-full flex-wrap items-center justify-between gap-3 border-b border-slate-200/60 bg-white/80 px-5 py-4 backdrop-blur-xl sm:px-8 lg:px-12 xl:px-16">
           <div className="min-w-0">
             <p className="eyebrow">Candidate Dashboard</p>
             <h1 className="mt-1 text-xl font-semibold text-slate-950 sm:text-2xl">Hire Ready AI</h1>
@@ -121,85 +121,7 @@ export default function Home() {
           )}
         </nav>
 
-        <section className="pt-8 sm:pt-12">
-          <div className="hero-mesh glass-card rounded-[1.75rem] px-5 py-8 sm:rounded-[2.2rem] sm:px-8 sm:py-10 lg:px-12 lg:py-12">
-            <div className="grid gap-8 lg:grid-cols-2 lg:items-start lg:gap-10">
-              <div className="min-w-0">
-                <p className="eyebrow">Welcome Back</p>
-                <h2 className="section-title mt-4 text-slate-950">
-                  Practice smarter, track improvement, and keep the same candidate identity across every session.
-                </h2>
-                <p className="mt-6 max-w-2xl text-sm leading-8 text-slate-600 sm:text-base">
-                  Your face-authenticated account keeps interview history, feedback reports, and session analytics connected in one place.
-                </p>
-
-                <div className="mt-8 grid gap-3 sm:grid-cols-3">
-                  <MetricTile label="Identity" value="Face Verified" />
-                  <MetricTile label="Reports" value="Email Ready" />
-                  <MetricTile label="Journey" value="Resume To Score" />
-                </div>
-
-                <div className="mt-8 grid gap-3 sm:grid-cols-3">
-                  {workflowHints.map((h) => (
-                    <div key={h.label} className="panel-card rounded-[1.35rem] p-4">
-                      <p className="text-xs uppercase tracking-[0.22em] text-slate-400">{h.label}</p>
-                      <p className="mt-2 text-lg font-semibold text-slate-900">{h.value}</p>
-                      <p className="mt-1 text-xs leading-5 text-slate-500">{h.detail}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="panel-card flex flex-col rounded-[1.75rem] p-5 sm:rounded-[1.9rem] sm:p-7">
-                <p className="text-sm font-semibold uppercase tracking-[0.32em] text-slate-500">Profile snapshot</p>
-                <div className="mt-5 flex flex-wrap items-center gap-4">
-                  <img
-                    alt=""
-                    src={userPhoto || `https://ui-avatars.com/api/?name=${user?.name || "User"}&background=0f766e&color=fff`}
-                    className="h-[5.5rem] w-[5.5rem] shrink-0 rounded-[1.5rem] border border-slate-200 object-cover shadow-sm sm:h-24 sm:w-24"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-lg font-semibold text-slate-900">{user?.name || "Candidate"}</p>
-                    <p className="mt-1 break-all text-sm text-slate-500">{user?.email || "Signed in account"}</p>
-                    <p className="mt-3 inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-                      Active account session
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-6 border-t border-slate-200/80 pt-6">
-                  <p className="text-sm font-medium leading-7 text-slate-600">
-                    This photo comes from your face enrollment. It appears on your interview dashboard and helps tie{" "}
-                    <span className="font-semibold text-slate-800">live camera analytics</span> to your Hire Ready AI profile.
-                  </p>
-                  <div className="mt-4 overflow-hidden rounded-[1.25rem] border border-slate-200/80 bg-white/60">
-                    <img src={dashboardAccent} alt="" className="h-auto w-full object-cover opacity-90" />
-                  </div>
-                  <ul className="mt-4 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
-                    <li className="flex items-center gap-2 rounded-xl bg-slate-50/90 px-3 py-2">
-                      <ShieldCheck className="h-4 w-4 shrink-0 text-teal-700" aria-hidden />
-                      <span>Secure login with face match</span>
-                    </li>
-                    <li className="flex items-center gap-2 rounded-xl bg-slate-50/90 px-3 py-2">
-                      <Mic className="h-4 w-4 shrink-0 text-teal-700" aria-hidden />
-                      <span>Mock interviews & voice capture</span>
-                    </li>
-                    <li className="flex items-center gap-2 rounded-xl bg-slate-50/90 px-3 py-2">
-                      <FileText className="h-4 w-4 shrink-0 text-teal-700" aria-hidden />
-                      <span>Resume builder & templates</span>
-                    </li>
-                    <li className="flex items-center gap-2 rounded-xl bg-slate-50/90 px-3 py-2">
-                      <BarChart3 className="h-4 w-4 shrink-0 text-teal-700" aria-hidden />
-                      <span>Scores, trends & feedback</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="py-12 sm:py-16">
+        <section className="px-5 py-12 sm:px-8 sm:py-16 lg:px-12 xl:px-16">
           <p className="eyebrow mb-3">Workspace</p>
           <h3 className="text-2xl font-bold text-slate-950 sm:text-3xl">Continue your hiring prep workflow</h3>
           <p className="mt-2 max-w-2xl text-sm text-slate-600 sm:text-base">Everything below uses the same authenticated session and face snapshot as your live interview room.</p>
@@ -252,6 +174,73 @@ export default function Home() {
             </motion.div>
           </div>
         </section>
+
+        <section className="min-h-[calc(100dvh-89px)]">
+          <div className="hero-mesh min-h-[calc(100dvh-89px)] px-5 py-12 sm:px-8 sm:py-16 lg:px-12 lg:py-20 xl:px-16">
+            <div className="grid gap-8 lg:grid-cols-2 lg:items-start lg:gap-10">
+              <div className="min-w-0">
+                <p className="eyebrow">Welcome Back</p>
+                <h2 className="section-title mt-4 text-slate-950">
+                  Practice smarter, track improvement, and keep the same candidate identity across every session.
+                </h2>
+                <p className="mt-6 max-w-2xl text-sm leading-8 text-slate-600 sm:text-base">
+                  Your face-authenticated account keeps interview history, feedback reports, and session analytics connected in one place.
+                </p>
+
+                <div className="mt-8 grid gap-3 sm:grid-cols-3">
+                  <MetricTile label="Identity" value="Face Verified" />
+                  <MetricTile label="Reports" value="Email Ready" />
+                  <MetricTile label="Journey" value="Resume To Score" />
+                </div>
+
+                <div className="mt-8 grid gap-3 sm:grid-cols-3">
+                  {workflowHints.map((h) => (
+                    <div key={h.label} className="panel-card rounded-[1.35rem] p-4">
+                      <p className="text-xs uppercase tracking-[0.22em] text-slate-400">{h.label}</p>
+                      <p className="mt-2 text-lg font-semibold text-slate-900">{h.value}</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">{h.detail}</p>
+                    </div>
+                  ))}
+                </div>
+
+              </div>
+
+              <div className="panel-card flex flex-col rounded-[1.75rem] p-5 sm:rounded-[1.9rem] sm:p-7">
+                <p className="text-sm font-semibold uppercase tracking-[0.32em] text-slate-500">Profile snapshot</p>
+                <div className="mt-5 flex flex-wrap items-center gap-4">
+                  <img
+                    alt=""
+                    src={userPhoto || `https://ui-avatars.com/api/?name=${user?.name || "User"}&background=0f766e&color=fff`}
+                    className="h-[5.5rem] w-[5.5rem] shrink-0 rounded-[1.5rem] border border-slate-200 object-cover shadow-sm sm:h-24 sm:w-24"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-lg font-semibold text-slate-900">{user?.name || "Candidate"}</p>
+                    <p className="mt-1 break-all text-sm text-slate-500">{user?.email || "Signed in account"}</p>
+                    <p className="mt-3 inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Active account session</p>
+                  </div>
+                </div>
+
+                <div className="mt-6 border-t border-slate-200/80 pt-6">
+                  <p className="text-sm font-medium leading-7 text-slate-600">
+                    This photo comes from your face enrollment. It appears on your interview dashboard and helps tie{" "}
+                    <span className="font-semibold text-slate-800">live camera analytics</span> to your Hire Ready AI profile.
+                  </p>
+                  <div className="mt-4 overflow-hidden rounded-[1.25rem] border border-slate-200/80 bg-white/60">
+                    <img src={dashboardAccent} alt="" className="h-auto w-full object-cover opacity-90" />
+                  </div>
+                  <ul className="mt-4 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
+                    <li className="flex items-center gap-2 rounded-xl bg-slate-50/90 px-3 py-2"><ShieldCheck className="h-4 w-4 shrink-0 text-teal-700" aria-hidden /><span>Secure login with face match</span></li>
+                    <li className="flex items-center gap-2 rounded-xl bg-slate-50/90 px-3 py-2"><Mic className="h-4 w-4 shrink-0 text-teal-700" aria-hidden /><span>Mock interviews & voice capture</span></li>
+                    <li className="flex items-center gap-2 rounded-xl bg-slate-50/90 px-3 py-2"><FileText className="h-4 w-4 shrink-0 text-teal-700" aria-hidden /><span>Resume builder & templates</span></li>
+                    <li className="flex items-center gap-2 rounded-xl bg-slate-50/90 px-3 py-2"><BarChart3 className="h-4 w-4 shrink-0 text-teal-700" aria-hidden /><span>Scores, trends & feedback</span></li>
+                  </ul>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
       </div>
     </div>
   );

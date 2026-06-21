@@ -24,8 +24,8 @@ export default function Rules() {
     };
 
     return (
-        <div className="app-shell">
-            <div className="page-frame flex min-h-[100dvh] flex-col justify-center py-8 sm:py-10">
+        <div className="min-h-screen overflow-x-hidden bg-slate-50">
+            <div className="flex min-h-[100dvh] w-full flex-col justify-center px-5 py-8 sm:px-8 sm:py-10 lg:px-12 xl:px-16">
 
                 {/* Back */}
                 <button
@@ -39,49 +39,44 @@ export default function Rules() {
                 <motion.div
                     initial={{ opacity: 0, y: 28 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="glass-card w-full rounded-[2.2rem] px-6 py-8 sm:px-10 sm:py-10"
+                    className="w-full border-y border-slate-200/80 bg-white/70 px-6 py-8 sm:px-10 sm:py-10"
                 >
-                    <div className="max-w-3xl mx-auto">
+                    <div className="w-full">
 
                         <p className="eyebrow">Interview Rules</p>
 
-                        <h1 className="mt-4 text-3xl font-bold text-slate-950 sm:text-4xl">
-                            Please read carefully before starting.
+                        <h1 className="mt-4 max-w-4xl text-3xl font-bold text-slate-950 sm:text-4xl">
+                            A fair interview starts with a focused environment.
                         </h1>
 
-                        <p className="mt-5 text-sm text-slate-600 leading-7">
-                            This interview simulates a real-world screening environment.
-                            Once started, strict rules apply to ensure fairness and accuracy.
+                        <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-600 sm:text-base">
+                            This session mirrors a real screening. Review these expectations once, then give the interview your full attention.
                         </p>
 
                         {/* RULES */}
-                        <div className="mt-8 space-y-4">
-
-                            {[
-                                "Once the interview starts, you cannot go back or refresh the page.",
-                                "Switching tabs or minimizing the window may terminate the session.",
-                                "Your camera and microphone must remain active throughout the interview.",
-                                "Any suspicious activity will automatically end the interview.",
-                                "Your responses are recorded and evaluated in real-time.",
-                                "For resume-based interviews, ensure your resume is accurate and final.",
-                            ].map((rule, index) => (
-                                <div
-                                    key={index}
-                                    className="panel-card rounded-[1.3rem] p-4 text-sm text-slate-700"
-                                >
-                                    {rule}
-                                </div>
-                            ))}
+                        <div className="mt-8 overflow-hidden rounded-[1.75rem] border border-slate-200 bg-slate-50/85 shadow-[0_12px_32px_rgba(15,23,42,0.06)]">
+                            <div className="border-b border-slate-200 bg-white/80 px-5 py-4 sm:px-6">
+                                <p className="text-sm font-semibold text-slate-900">Before you begin</p>
+                                <p className="mt-1 text-sm text-slate-500">Please keep these rules in mind for the full session.</p>
+                            </div>
+                            <ol className="divide-y divide-slate-200/80">
+                                <Rule number="01"><strong>Stay in this session.</strong> You cannot go back or refresh once the interview begins.</Rule>
+                                <Rule number="02"><strong>Keep this tab active.</strong> Switching tabs or minimizing the window may end the session.</Rule>
+                                <Rule number="03"><strong>Keep camera and microphone on</strong> throughout your interview.</Rule>
+                                <Rule number="04"><strong>Avoid suspicious activity.</strong> It will automatically end the interview.</Rule>
+                                <Rule number="05"><strong>Your answers are recorded</strong> and evaluated in real time.</Rule>
+                                <Rule number="06"><strong>Use an accurate final resume</strong> for resume-based interviews.</Rule>
+                            </ol>
                         </div>
 
                         {/* AGREEMENT */}
-                        <div className="mt-8 flex items-center gap-3">
+                        <div className="mt-8 flex items-center gap-3 rounded-2xl border border-teal-100 bg-teal-50/60 px-4 py-4">
                             <input
                                 type="checkbox"
                                 id="agree"
                                 checked={agreed}
                                 onChange={() => setAgreed(!agreed)}
-                                className="w-4 h-4"
+                                className="h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-600"
                             />
                             <label htmlFor="agree" className="text-sm text-slate-700">
                                 I have read and agree to the rules
@@ -104,5 +99,14 @@ export default function Rules() {
                 </motion.div>
             </div>
         </div>
+    );
+}
+
+function Rule({ number, children }) {
+    return (
+        <li className="flex gap-4 px-5 py-4 text-sm leading-7 text-slate-700 sm:px-6 sm:py-5 sm:text-base">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-xs font-bold text-teal-800">{number}</span>
+            <p>{children}</p>
+        </li>
     );
 }

@@ -112,8 +112,8 @@ export default function RoleBasedResume() {
       .join(" | ");
 
   return (
-    <div className="app-shell min-h-screen">
-      <div className="page-frame py-8 sm:py-10">
+    <div className="min-h-screen overflow-x-hidden bg-slate-50">
+      <div className="w-full px-5 py-8 sm:px-8 sm:py-10 lg:px-12 xl:px-16">
       <div className="grid w-full gap-8 lg:grid-cols-[minmax(280px,360px)_minmax(0,1fr)] xl:gap-10">
         <div className={`${cardClass} h-fit p-6`}>
           <div className="mb-6">

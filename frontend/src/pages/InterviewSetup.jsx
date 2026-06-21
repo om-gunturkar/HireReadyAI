@@ -38,10 +38,11 @@ export default function InterviewSetup() {
       : mode === "language"
         ? selectedLanguage
         : resumeFile?.name;
+  const selectClass = "w-full cursor-pointer rounded-2xl border border-slate-300 bg-white px-5 py-4 text-base font-medium text-slate-800 shadow-sm outline-none transition hover:border-teal-400 hover:bg-teal-50/40 focus:border-teal-600 focus:ring-4 focus:ring-teal-100";
 
   return (
-    <div className="app-shell">
-      <div className="page-frame flex min-h-[100dvh] flex-col justify-center py-8 sm:py-10">
+    <div className="min-h-screen overflow-x-hidden bg-slate-50">
+      <div className="flex min-h-[100dvh] w-full flex-col justify-center px-5 py-8 sm:px-8 sm:py-10 lg:px-12 xl:px-16">
         <Link
           to="/home"
           className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-teal-800 transition hover:text-teal-950"
@@ -52,16 +53,11 @@ export default function InterviewSetup() {
         <motion.div
           initial={{ opacity: 0, y: 28 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-card w-full rounded-[2.2rem] px-6 py-8 sm:px-10 sm:py-10"
+          className="w-full border-y border-slate-200/80 bg-white/70 px-6 py-8 sm:px-10 sm:py-10"
         >
           <div className="grid gap-10 lg:grid-cols-[1fr_0.95fr]">
             <div>
               <p className="eyebrow">Interview Setup</p>
-              <h1 className="mt-4 text-3xl font-bold leading-tight text-slate-950 sm:text-4xl lg:text-5xl">Choose the right interview mode and start with confidence.</h1>
-              <p className="mt-5 max-w-2xl text-sm leading-8 text-slate-600 sm:text-base">
-                Same live pipeline as production-style screeners: mode selection, validated inputs, then a gated session with camera and speech. Your choice is passed into the next screen unchanged.
-              </p>
-
               <div className="mt-8 grid gap-4">
                 {modes.map((item) => {
                   const Icon = item.icon;
@@ -96,7 +92,7 @@ export default function InterviewSetup() {
 
               <div className="mt-6 space-y-5">
                 {mode === "role" && (
-                  <select value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)} className="field">
+                  <select value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)} className={selectClass}>
                     <option>Frontend Developer</option>
                     <option>Backend Developer</option>
                     <option>Full Stack Developer</option>
@@ -106,7 +102,7 @@ export default function InterviewSetup() {
                 )}
 
                 {mode === "language" && (
-                  <select value={selectedLanguage} onChange={(e) => setSelectedLanguage(e.target.value)} className="field">
+                  <select value={selectedLanguage} onChange={(e) => setSelectedLanguage(e.target.value)} className={selectClass}>
                     <option>C/C++</option>
                     <option>Java</option>
                     <option>Python</option>
@@ -130,14 +126,6 @@ export default function InterviewSetup() {
                     <p className="mt-3 text-sm text-slate-500">{resumeFile?.name || "No file selected"}</p>
                   </div>
                 )}
-              </div>
-
-              <div className="mt-8 rounded-[1.5rem] border border-dashed border-slate-300 bg-white/75 p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">Interview Summary</p>
-                <p className="mt-3 text-lg font-semibold text-slate-900">{selectedValue || "Choose your interview input"}</p>
-                <p className="mt-2 text-sm leading-7 text-slate-600">
-                  The selected domain and your existing analysis data will continue into the live interview and score report.
-                </p>
               </div>
 
               <button

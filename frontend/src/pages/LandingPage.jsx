@@ -38,12 +38,12 @@ export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <div className="app-shell overflow-hidden">
-      <div className="page-frame">
+    <div className="min-h-screen overflow-x-hidden bg-slate-50">
+      <div className="w-full">
         <motion.nav
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-card sticky top-3 z-40 mt-2 flex flex-wrap items-center gap-3 rounded-[1.75rem] px-5 py-3.5 shadow-[0_20px_50px_rgba(15,23,42,0.08)] sm:px-6 sm:py-4"
+          className="sticky top-0 z-50 flex w-full flex-wrap items-center gap-4 border-b border-slate-200/60 bg-white/80 px-5 py-4 backdrop-blur-xl sm:px-8 lg:px-12 xl:px-16"
         >
           <Link to="/" className="min-w-0 flex-1 basis-[200px]" onClick={() => setMenuOpen(false)}>
             <p className="eyebrow">Hire Ready AI</p>
@@ -88,8 +88,8 @@ export default function LandingPage() {
           </AnimatePresence>
         </motion.nav>
 
-        <section className="relative overflow-hidden pt-8 sm:pt-12 lg:pt-14">
-          <div className="hero-mesh glass-card rounded-[2rem] px-6 py-9 shadow-[0_24px_60px_rgba(15,23,42,0.1)] sm:rounded-[2.25rem] sm:px-10 sm:py-11 lg:px-12 lg:py-14">
+        <section className="relative min-h-[calc(100dvh-81px)] overflow-hidden">
+          <div className="hero-mesh min-h-[calc(100dvh-81px)] px-5 py-12 sm:px-8 sm:py-16 lg:px-12 lg:py-20 xl:px-16">
             <div className="grid items-start gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12">
               <div className="min-w-0">
                 <p className="eyebrow">AI Interview Platform</p>
@@ -157,7 +157,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="features" className="py-14 sm:py-16 lg:py-20">
+        <section id="features" className="px-5 py-14 sm:px-8 sm:py-16 lg:px-12 lg:py-20 xl:px-16">
           <div className="mb-10 max-w-2xl">
             <p className="eyebrow">Core Features</p>
             <h3 className="mt-3 text-3xl font-bold text-slate-950 sm:text-4xl">Built for actual practice, not just a pretty demo.</h3>
@@ -183,7 +183,7 @@ export default function LandingPage() {
         </section>
 
         <section id="workflow" className="pb-14 sm:pb-16 lg:pb-20">
-          <div className="glass-card rounded-[2rem] px-6 py-8 shadow-[0_20px_50px_rgba(15,23,42,0.08)] sm:px-10 sm:py-10">
+          <div className="border-y border-slate-200/80 bg-white/70 px-5 py-10 sm:px-8 sm:py-14 lg:px-12 lg:py-16 xl:px-16">
             <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
               <div>
                 <p className="eyebrow">Workflow</p>
@@ -207,7 +207,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="project" className="pb-14 sm:pb-16 lg:pb-20">
+        <section id="project" className="px-5 pb-14 sm:px-8 sm:pb-16 lg:px-12 lg:pb-20 xl:px-16">
           <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="panel-card rounded-[1.9rem] border-slate-200/90 p-7 shadow-[0_12px_36px_rgba(15,23,42,0.06)] sm:p-8">
               <p className="eyebrow">Project Quality</p>

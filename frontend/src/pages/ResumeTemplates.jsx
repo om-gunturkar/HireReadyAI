@@ -19,15 +19,15 @@ export default function ResumeTemplates() {
   };
 
   return (
-    <div className="app-shell min-h-screen">
-      <div className="page-frame py-8 sm:py-10">
+    <div className="min-h-screen overflow-x-hidden bg-slate-50">
+      <div className="w-full px-5 py-8 sm:px-8 sm:py-10 lg:px-12 xl:px-16">
       {/* <button
         onClick={() => navigate("/home")}   // change to "/" if your home route is root
         className="mb-6 px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
       >
         ← Back to Home
       </button> */}
-      <h1 className="mb-8 text-center text-3xl font-bold text-purple-700">
+      <h1 className="mb-8 text-center text-3xl font-bold text-slate-950">
         Choose a Resume Template
       </h1>
 
@@ -35,21 +35,21 @@ export default function ResumeTemplates() {
         {templates.map((t) => (
           <div
             key={t.id}
-            className="bg-white border rounded-xl p-6 shadow hover:shadow-lg transition"
+            className="rounded-[1.75rem] border border-slate-200 bg-white/90 p-6 shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition hover:border-teal-200 hover:shadow-lg"
           >
-            <div className="h-80 bg-gray-100 flex items-center justify-center mb-4 text-gray-400">
+            <div className="mb-4 flex h-80 items-center justify-center overflow-hidden rounded-[1.25rem] bg-slate-100 text-slate-400">
               <img
     src={t.image}
     alt={t.name}
-    className="w-full h-full object-contain bg-gray-50"
+    className="h-full w-full bg-slate-50 object-contain"
   />
             </div>
 
-            <h2 className="text-lg font-semibold text-center">{t.name}</h2>
+            <h2 className="text-center text-lg font-semibold text-slate-900">{t.name}</h2>
 
             <button
               onClick={() => handleSelect(t.id)}
-              className="mt-4 w-full py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              className="primary-btn mt-4 w-full py-2.5"
             >
               Use Template
             </button>

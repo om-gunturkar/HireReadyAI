@@ -1416,20 +1416,28 @@ export default function InterviewSession() {
       )}
 
       {/* ✅ MAIN PAGE */}
-      <div className="app-shell min-h-screen">
+      <div className="min-h-[100dvh] bg-slate-50">
         <AIMonitoringStatus />
         <TopAlertBar alert={topAlert} onDismiss={dismissTopAlert} />
 
-        <div className="page-frame flex justify-center py-4 sm:py-6">
-          <div className="glass-card w-full min-h-[min(90vh,100dvh)] rounded-[1.5rem] border border-white/60 p-4 sm:rounded-[2rem] sm:p-6 lg:p-8 xl:p-10">
+        <div className="flex min-h-[100dvh] w-full justify-center overflow-y-auto px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
+          <div className="flex min-h-[calc(100dvh-1.5rem)] w-full flex-col border-y border-slate-200/80 bg-white/70 p-4 sm:p-5 lg:p-6">
 
-            <div className="flex flex-col gap-2 border-b border-slate-200/80 pb-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-teal-700">Live mock interview</p>
+            <div className="shrink-0 flex flex-col gap-2 border-b border-slate-200/80 pb-3 sm:flex-row sm:items-end sm:justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-teal-700">Live mock interview</p>
                 <h2 className="mt-1 text-xl font-bold text-slate-900 sm:text-2xl">Hire Ready AI — session room</h2>
                 <p className="mt-2 text-sm text-slate-600">
                   <span className="font-medium text-slate-800">Mode:</span> {mode || "—"} · <span className="font-medium text-slate-800">Focus:</span> {value || "—"}
                 </p>
+                </div>
+                <CandidateIdentityCard
+                  title="Verified candidate"
+                  subtitle="Login face scan"
+                  image={userFaceSnapshot}
+                  topic={value}
+                />
               </div>
               <div className="flex flex-wrap gap-2 text-xs text-slate-500">
                 <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">Camera + face mesh</span>
@@ -1437,11 +1445,11 @@ export default function InterviewSession() {
               </div>
             </div>
 
-            <div className="interview-live-grid mt-6 lg:mt-8">
-              <div className="order-2 flex flex-col gap-5 lg:order-1">
-                <div>
+            <div className="interview-live-grid mt-4 min-h-0 flex-1 lg:!items-stretch lg:gap-4">
+              <div className="order-2 flex min-h-0 flex-col gap-5 lg:order-1 lg:grid lg:grid-rows-2 lg:gap-3">
+                <div className="flex min-h-0 flex-col">
                   <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">AI interviewer</p>
-                  <div className="flex min-h-[200px] items-center justify-center rounded-[1.5rem] border border-teal-200/80 bg-gradient-to-br from-teal-50 via-white to-sky-50 shadow-inner sm:min-h-[240px] lg:min-h-[280px]">
+                  <div className="flex min-h-[200px] flex-1 items-center justify-center rounded-[1.5rem] border border-teal-200/80 bg-gradient-to-br from-teal-50 via-white to-sky-50 shadow-inner sm:min-h-[240px] lg:min-h-0">
                     {robotAnimation && (
                       <div className="flex max-h-[200px] w-full max-w-[260px] justify-center sm:max-h-[240px] sm:max-w-[280px] lg:max-h-[260px]">
                         <Lottie
@@ -1455,10 +1463,10 @@ export default function InterviewSession() {
                   </div>
                 </div>
 
-                <div>
+                <div className="flex min-h-0 flex-col lg:items-center">
                   <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Camera preview</p>
-                  <div className="overflow-hidden rounded-[1.5rem] border border-slate-200 shadow-[0_12px_40px_rgba(0,0,0,0.25)] ring-1 ring-slate-200/50">
-                    <div className="relative aspect-[4/3] w-full max-h-[min(50vh,420px)] min-h-[200px]">
+                  <div className="min-h-0 flex-1 overflow-hidden rounded-[1.5rem] border border-slate-200 shadow-[0_12px_40px_rgba(0,0,0,0.25)] ring-1 ring-slate-200/50 lg:h-[calc((100dvh-12rem)/2)] lg:w-auto lg:flex-none lg:aspect-[4/3]">
+                    <div className="relative aspect-[4/3] w-full max-h-[min(50vh,420px)] min-h-[200px] lg:h-full lg:min-h-0 lg:max-h-none">
                       <CameraFeed videoRef={videoRef} />
                       <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 z-20 h-full w-full" />
                     </div>
@@ -1466,7 +1474,7 @@ export default function InterviewSession() {
                 </div>
               </div>
 
-              <div className="order-1 flex min-h-0 flex-col rounded-[1.5rem] border border-slate-200/90 bg-gradient-to-br from-white to-slate-50/90 p-5 shadow-inner sm:p-6 lg:p-8 lg:order-2">
+              <div className="order-1 flex min-h-0 flex-col overflow-y-auto rounded-[1.5rem] border border-slate-200/90 bg-gradient-to-br from-white to-slate-50/90 p-5 shadow-inner sm:p-6 lg:order-2 lg:p-6">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 
                   <div className="flex items-center gap-3">
@@ -1493,16 +1501,10 @@ export default function InterviewSession() {
                     )}
                   </div>
 
-                  <CandidateIdentityCard
-                    title="Verified candidate"
-                    subtitle="Login face scan"
-                    image={userFaceSnapshot}
-                    topic={value}
-                  />
                 </div>
 
                 <div className="mt-5 relative">
-                  <p className="text-lg font-semibold leading-relaxed text-slate-900 sm:text-xl lg:text-2xl lg:leading-snug">
+                  <p className="text-lg font-semibold leading-relaxed text-slate-900 sm:text-xl lg:leading-snug">
                     {question}
                   </p>
 
@@ -1538,11 +1540,11 @@ export default function InterviewSession() {
                 )}
 
                 {phase === "interview" && (
-                  <div className="mt-6 flex flex-1 flex-col">
+                  <div className="mt-6 flex min-h-0 flex-1 flex-col">
                     <label className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Your answer (live transcript)</label>
                     <textarea
                       rows={6}
-                      className="field min-h-[140px] resize-y border-slate-200/90 text-slate-800 sm:min-h-[180px]"
+                      className="field min-h-[140px] flex-1 resize-y border-slate-200/90 text-slate-800 sm:min-h-[180px] lg:min-h-0"
                       value={finalTranscript + interimTranscript}
                       onChange={(e) => setFinalTranscript(e.target.value)}
                     />
