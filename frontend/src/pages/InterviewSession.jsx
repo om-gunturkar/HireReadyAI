@@ -674,7 +674,16 @@ export default function InterviewSession() {
   const speak = (text) => {
     const synth = window.speechSynthesis;
 
-    if (!synth) return;
+    if (!synth) {
+      console.warn("⚠️ Speech synthesis not available");
+      // Fallback: start timer immediately
+      setTimeout(() => {
+        startMic();
+        startTimer();
+        startAudioAnalysis();
+      }, 500);
+      return;
+    }
 
     synth.cancel();
 
@@ -704,6 +713,21 @@ export default function InterviewSession() {
       startAudioAnalysis();
 
       console.log("🎤 User can speak now");
+    };
+
+    // 🔴 ERROR HANDLER - ensure mic/timer start even if speech fails
+    utterance.onerror = (error) => {
+      console.error("❌ Speech synthesis error:", error);
+      isAISpeakingRef.current = false;
+
+      setActiveSpeaker("user");
+
+      // Fallback: start mic and timer even if speech failed
+      setTimeout(() => {
+        startMic();
+        startTimer();
+        startAudioAnalysis();
+      }, 300);
     };
 
     synth.speak(utterance);
@@ -942,6 +966,13 @@ export default function InterviewSession() {
         console.error("❌ API Error:", errText);
 
         setQuestion("⚠️ Failed to fetch question. Check backend.");
+        
+        // Fallback: start timer anyway so user can continue
+        setTimeout(() => {
+          startMic();
+          startTimer();
+          startAudioAnalysis();
+        }, 500);
         return;
       }
 
@@ -951,6 +982,12 @@ export default function InterviewSession() {
 
       if (!data.question) {
         setQuestion("No question received from server.");
+        // Fallback: start timer anyway
+        setTimeout(() => {
+          startMic();
+          startTimer();
+          startAudioAnalysis();
+        }, 500);
         return;
       }
 
@@ -965,11 +1002,20 @@ export default function InterviewSession() {
       setRawQuestion(cleanQ);
       setQuestion(displayQ);
       setAskedQuestions((prev) => [...prev, cleanQ]);
+      
+      console.log("✅ Question displayed:", displayQ);
       speak(displayQ);
 
     } catch (err) {
       console.error("❌ Fetch Error:", err);
       setQuestion("Failed to load question.");
+      
+      // Fallback: start timer anyway
+      setTimeout(() => {
+        startMic();
+        startTimer();
+        startAudioAnalysis();
+      }, 500);
     }
   };
   /* ---------------- TIMER ---------------- */
@@ -1069,56 +1115,63 @@ export default function InterviewSession() {
     if (isProcessingRef.current) return;
     isProcessingRef.current = true;
 
-    // ❌ STOP MIC before moving to next question
     try {
-      recognitionRef.current?.stop();
-      console.log("🎤 Mic OFF (Next question)");
-    } catch { }
+      // ❌ STOP MIC before moving to next question
+      try {
+        recognitionRef.current?.stop();
+        console.log("🎤 Mic OFF (Next question)");
+      } catch { }
 
-    stopAll();
+      stopAll();
 
-    const userAnswer = (finalTranscript + interimTranscript).trim();
-    const currentQuestion = rawQuestion;
+      const userAnswer = (finalTranscript + interimTranscript).trim();
+      const currentQuestion = rawQuestion;
 
-    // 🧠 STEP 2: Evaluate answer BEFORE moving ahead
-    if (currentQuestion && userAnswer.trim()) {
-      const result = await evaluateAndSaveAnswer(currentQuestion, userAnswer);
+      // 🧠 STEP 2: Evaluate answer BEFORE moving ahead
+      if (currentQuestion && userAnswer.trim()) {
+        const result = await evaluateAndSaveAnswer(currentQuestion, userAnswer);
 
-      if (result) {
-        console.log("✅ Score stored:", result);
+        if (result) {
+          console.log("✅ Score stored:", result);
 
-        // 👉 store AI scores inside metricsHistory
-        setMetricsHistory((prev) => [
-          ...prev,
-          {
-            ...currentMetrics,   // face + emotion data
-            aiScore: result,     // 🔥 AI evaluation
-          },
-        ]);
+          // 👉 store AI scores inside metricsHistory
+          setMetricsHistory((prev) => [
+            ...prev,
+            {
+              ...currentMetrics,   // face + emotion data
+              aiScore: result,     // 🔥 AI evaluation
+            },
+          ]);
+        }
       }
-    }
 
-    // 🎯 END CONDITION
-    if (countRef.current >= MAX_QUESTIONS) {
-      speak("Your interview is completed.");
+      // 🎯 END CONDITION
+      if (countRef.current >= MAX_QUESTIONS) {
+        speak("Your interview is completed.");
 
-      setTimeout(() => {
-        stopInterview();
-      }, 1500);
+        setTimeout(() => {
+          stopInterview();
+        }, 1500);
 
+        isProcessingRef.current = false;
+        return;
+      }
+
+      // 🔁 NEXT QUESTION
+      const newCount = countRef.current + 1;
+
+      setCount(newCount);
+      countRef.current = newCount;
+
+      console.log("📝 Fetching question", newCount);
+      await getQuestion(userAnswer, newCount, sessionId, currentQuestion);
+
+    } catch (error) {
+      console.error("❌ Error in nextQuestion:", error);
+    } finally {
+      // ✅ ALWAYS reset processing flag
       isProcessingRef.current = false;
-      return;
     }
-
-    // 🔁 NEXT QUESTION
-    const newCount = countRef.current + 1;
-
-    setCount(newCount);
-    countRef.current = newCount;
-
-    await getQuestion(userAnswer, newCount, sessionId, currentQuestion);
-
-    isProcessingRef.current = false;
   };
 
   /* ---------------- END BUTTON ---------------- */
@@ -1127,6 +1180,14 @@ export default function InterviewSession() {
 
     clearInterval(timerRef.current);
     await nextQuestion();
+    
+    // Safety timeout: ensure button is clickable again after 10 seconds
+    setTimeout(() => {
+      if (isProcessingRef.current) {
+        console.warn("⚠️ Processing flag still set after 10s, resetting");
+        isProcessingRef.current = false;
+      }
+    }, 10000);
   };
 
   const finalizeInterviewAndNavigate = async () => {
