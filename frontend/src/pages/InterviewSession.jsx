@@ -1449,14 +1449,14 @@ export default function InterviewSession() {
               <div className="order-2 flex min-h-0 flex-col gap-5 lg:order-1 lg:grid lg:grid-rows-2 lg:gap-3">
                 <div className="flex min-h-0 flex-col">
                   <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">AI interviewer</p>
-                  <div className="flex min-h-[200px] flex-1 items-center justify-center rounded-[1.5rem] border border-teal-200/80 bg-gradient-to-br from-teal-50 via-white to-sky-50 shadow-inner sm:min-h-[240px] lg:min-h-0">
+                  <div className="h-[260px] w-full max-w-[520px] mx-auto flex items-center justify-center rounded-[1.5rem] border border-teal-200/80 bg-gradient-to-br from-teal-50 via-white to-sky-50 shadow-inner sm:h-[320px] lg:h-[360px]">
                     {robotAnimation && (
-                      <div className="flex max-h-[200px] w-full max-w-[260px] justify-center sm:max-h-[240px] sm:max-w-[280px] lg:max-h-[260px]">
+                      <div className="relative h-full w-full overflow-hidden rounded-[1.5rem] flex items-center justify-center">
                         <Lottie
                           animationData={robotAnimation}
                           loop={activeSpeaker === "system"}
                           autoplay={activeSpeaker === "system"}
-                          style={{ width: "100%", height: "100%", maxHeight: 260 }}
+                          style={{ width: '100%', height: '100%', transform: 'scale(1.2)', transformOrigin: 'center center' }}
                         />
                       </div>
                     )}
@@ -1465,8 +1465,8 @@ export default function InterviewSession() {
 
                 <div className="flex min-h-0 flex-col lg:items-center">
                   <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Camera preview</p>
-                  <div className="min-h-0 flex-1 overflow-hidden rounded-[1.5rem] border border-slate-200 shadow-[0_12px_40px_rgba(0,0,0,0.25)] ring-1 ring-slate-200/50 lg:h-[calc((100dvh-12rem)/2)] lg:w-auto lg:flex-none lg:aspect-[4/3]">
-                    <div className="relative aspect-[4/3] w-full max-h-[min(50vh,420px)] min-h-[200px] lg:h-full lg:min-h-0 lg:max-h-none">
+                  <div className="h-[260px] w-full max-w-[520px] overflow-hidden rounded-[1.5rem] border border-slate-200 shadow-[0_12px_40px_rgba(0,0,0,0.25)] ring-1 ring-slate-200/50 sm:h-[320px] lg:h-[360px]">
+                    <div className="relative h-full w-full">
                       <CameraFeed videoRef={videoRef} />
                       <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 z-20 h-full w-full" />
                     </div>
