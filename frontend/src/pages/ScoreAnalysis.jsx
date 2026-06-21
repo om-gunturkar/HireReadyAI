@@ -87,7 +87,6 @@ export default function ScoreAnalysis() {
   const [loading, setLoading] = useState(!initialReport && !!sessionId);
   const [error, setError] = useState("");
   const [animatedScore, setAnimatedScore] = useState(0);
-  const [userFaceSnapshot, setUserFaceSnapshot] = useState("");
 
   useEffect(() => {
     if (!sessionId || initialReport) return;
@@ -133,14 +132,6 @@ export default function ScoreAnalysis() {
 
     return () => clearInterval(interval);
   }, [report?.scoreData?.totalScore]);
-
-  useEffect(() => {
-    const snapshot =
-      localStorage.getItem("userFaceSnapshot") ||
-      sessionStorage.getItem("userFaceSnapshot") ||
-      "";
-    setUserFaceSnapshot(snapshot);
-  }, []);
 
   if (loading) {
     return (
@@ -203,9 +194,9 @@ export default function ScoreAnalysis() {
   const improvementInsight = getImprovementInsight({ history, scoreData, previousAttempt });
 
   return (
-    <div className="app-shell min-h-screen">
-      <div className="page-frame py-6 sm:py-10">
-        <div className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/75 shadow-[0_25px_80px_rgba(15,23,42,0.12)] backdrop-blur-xl">
+    <div className="min-h-screen overflow-x-hidden bg-slate-50">
+      <div className="w-full px-5 py-6 sm:px-8 sm:py-10 lg:px-12 xl:px-16">
+        <div className="w-full overflow-hidden border-y border-slate-200/80 bg-white/75 shadow-[0_18px_48px_rgba(15,23,42,0.08)] backdrop-blur-xl">
           <div className="border-b border-slate-200/70 bg-[linear-gradient(120deg,rgba(15,118,110,0.08),rgba(249,115,22,0.08),rgba(37,99,235,0.08))] px-6 py-8 sm:px-10">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
               <div>
@@ -219,12 +210,6 @@ export default function ScoreAnalysis() {
                 </p>
               </div>
               <div className="flex flex-col gap-4 lg:items-end">
-                <CandidateIdentityCard
-                  title="Verified candidate"
-                  subtitle="Login face scan"
-                  image={userFaceSnapshot}
-                  helper={`Feedback for ${topic}`}
-                />
                 <div className="rounded-[1.75rem] bg-slate-950 px-8 py-6 text-white shadow-[0_20px_60px_rgba(15,23,42,0.35)]">
                   <p className="text-xs uppercase tracking-[0.35em] text-teal-300">Overall Score</p>
                   <div className="mt-3 text-6xl font-bold">{animatedScore}</div>
@@ -425,7 +410,6 @@ export default function ScoreAnalysis() {
     </div>
   );
 }
-
 function MetricCard({ label, value, accent }) {
   return (
     <div className="rounded-[1.5rem] border border-slate-200 bg-white/90 p-5 shadow-[0_16px_40px_rgba(15,23,42,0.08)]">
@@ -478,23 +462,3 @@ function TrendSummaryCard({ label, value, helper }) {
   );
 }
 
-function CandidateIdentityCard({ title, subtitle, image, helper }) {
-  return (
-    <div className="w-full max-w-[280px] rounded-[1.5rem] border border-slate-200 bg-white/90 p-4 shadow-[0_12px_30px_rgba(15,23,42,0.08)]">
-      <p className="text-xs font-semibold uppercase tracking-[0.3em] text-teal-600">{title}</p>
-      <div className="mt-3 flex items-center gap-3">
-        <div className="h-16 w-16 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
-          {image ? (
-            <img src={image} alt="Verified candidate" className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold text-slate-500">No scan</div>
-          )}
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-slate-900">{subtitle}</p>
-          <p className="mt-1 text-xs text-slate-500">{helper}</p>
-        </div>
-      </div>
-    </div>
-  );
-}

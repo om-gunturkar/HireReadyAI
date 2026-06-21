@@ -12,8 +12,8 @@ export default function InterviewFeedback() {
 
   if (metricsHistory.length === 0) {
     return (
-      <div className="app-shell min-h-[100dvh]">
-        <div className="page-frame flex min-h-[80dvh] items-center justify-center py-10">
+      <div className="min-h-[100dvh] overflow-x-hidden bg-slate-50">
+        <div className="flex min-h-[80dvh] w-full items-center justify-center px-5 py-10 sm:px-8 lg:px-12 xl:px-16">
         <div className="panel-card w-full max-w-md rounded-[2rem] p-8 text-center shadow-[0_20px_50px_rgba(15,23,42,0.1)] sm:p-10">
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-teal-700">Behavior report</p>
           <h1 className="mt-3 text-2xl font-bold text-slate-900 sm:text-3xl">No interview data yet</h1>
@@ -61,8 +61,8 @@ export default function InterviewFeedback() {
   const composureScore = Math.max(0, 100 - (report.emotionCounts.sad + report.emotionCounts.angry + report.emotionCounts.fearful) * 2);
 
   return (
-    <div className="app-shell min-h-[100dvh]">
-      <div className="page-frame py-8 sm:py-10">
+    <div className="min-h-[100dvh] overflow-x-hidden bg-slate-50">
+      <div className="w-full px-5 py-8 sm:px-8 sm:py-10 lg:px-12 xl:px-16">
         <button
           type="button"
           onClick={() => navigate("/mock-interview")}
@@ -71,7 +71,7 @@ export default function InterviewFeedback() {
           ← Back to setup
         </button>
 
-        <div className="glass-card rounded-[2rem] p-6 sm:p-8">
+        <div className="w-full border-y border-slate-200/80 bg-white/70 p-6 sm:p-8">
           <div className="mb-8 border-b border-slate-200/80 pb-6">
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-teal-700">Visual analytics</p>
             <h1 className="mt-2 text-3xl font-bold text-slate-900 sm:text-4xl">Interview behavior feedback</h1>

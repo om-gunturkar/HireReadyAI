@@ -21,7 +21,11 @@ export default function TopAlertBar({ alert, onDismiss }) {
 
   if (!alert) return null;
 
-  const { message, id } = alert;
+  const { message, id, type } = alert;
+  const isError = type === "error";
+  const palette = isError
+    ? { background: "#fff1f2", border: "#fecdd3", accent: "#e11d48", text: "#881337" }
+    : { background: "#fffbeb", border: "#fde68a", accent: "#d97706", text: "#78350f" };
 
   const handleDismiss = () => {
     setVisible(false);
@@ -32,26 +36,29 @@ export default function TopAlertBar({ alert, onDismiss }) {
     <div
       style={{
         position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100%",
+        top: "16px",
+        left: "16px",
+        width: "min(420px, calc(100vw - 32px))",
         zIndex: 9999,
-        transform: visible ? "translateY(0)" : "translateY(-100%)",
-        transition: "transform 0.3s ease-in-out",
+        transform: visible ? "translateX(0)" : "translateX(-120%)",
+        opacity: visible ? 1 : 0,
+        transition: "transform 0.3s ease, opacity 0.3s ease",
       }}
     >
       <div
         style={{
-          backgroundColor: "#fff4e5",
-          color: "#663c00",
-          borderBottom: "1px solid #ffe0b2",
-          height: "45px",
+          backgroundColor: palette.background,
+          color: palette.text,
+          border: `1px solid ${palette.border}`,
+          borderLeft: `5px solid ${palette.accent}`,
+          borderRadius: "16px",
+          minHeight: "64px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          paddingLeft: "16px",
-          paddingRight: "16px",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+          gap: "12px",
+          padding: "12px 14px",
+          boxShadow: "0 16px 36px rgba(15, 23, 42, 0.16)",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -65,12 +72,11 @@ export default function TopAlertBar({ alert, onDismiss }) {
           style={{
             background: "none",
             border: "none",
-            color: "#663c00",
+            color: palette.text,
             fontSize: "13px",
             fontWeight: 600,
             cursor: "pointer",
-            textDecoration: "underline",
-            padding: "4px 8px",
+            padding: "6px",
           }}
         >
           Dismiss

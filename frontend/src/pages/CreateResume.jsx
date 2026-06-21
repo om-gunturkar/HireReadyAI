@@ -4,8 +4,8 @@ export default function CreateResume() {
   const navigate = useNavigate();
 
   return (
-    <div className="app-shell min-h-screen">
-      <div className="page-frame flex min-h-[calc(100dvh-3rem)] flex-col justify-center py-10 sm:py-14">
+    <div className="min-h-screen overflow-x-hidden bg-slate-50">
+      <div className="flex min-h-[100dvh] w-full flex-col justify-center px-5 py-10 sm:px-8 sm:py-14 lg:px-12 xl:px-16">
         <h1 className="text-center text-3xl font-bold text-slate-900 sm:text-4xl">Create your resume</h1>
 
         <p className="mx-auto mb-10 mt-3 max-w-2xl text-center text-sm text-slate-600 sm:text-base">

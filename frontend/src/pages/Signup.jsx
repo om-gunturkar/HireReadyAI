@@ -83,8 +83,8 @@ export default function Signup() {
   };
 
   return (
-    <div className="app-shell">
-      <div className="page-frame flex min-h-[100dvh] flex-col justify-center py-8 sm:py-10">
+    <div className="min-h-screen overflow-x-hidden bg-slate-50">
+      <div className="flex min-h-[100dvh] w-full flex-col justify-center px-5 py-8 sm:px-8 sm:py-10 lg:px-12 xl:px-16">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <Link to="/" className="text-sm font-semibold text-teal-800 transition hover:text-teal-950">← Hire Ready AI</Link>
           <p className="text-xs text-slate-500">One face enrollment for login + interviews</p>
